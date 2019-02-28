@@ -9,6 +9,7 @@ namespace App\Command;
 
 use App\Models\User;
 use App\Models\Relay;
+use App\Services\Gateway\ChenPay;
 use App\Utils\Hash;
 use App\Utils\Tools;
 use App\Services\Config;
@@ -28,18 +29,26 @@ class XCat
     public function boot()
     {
         switch ($this->argv[1]) {
-            case("install"):
-                    return $this->install();
+            case("alipay"):
+                return (new ChenPay())->AliPayListen();
+            case("wxpay"):
+                return (new ChenPay())->WxPayListen();
             case("createAdmin"):
                 return $this->createAdmin();
             case("resetTraffic"):
                 return $this->resetTraffic();
             case("setTelegram"):
-                    return $this->setTelegram();
+                return $this->setTelegram();
             case("initQQWry"):
-                    return $this->initQQWry();
+                 return $this->initQQWry();
             case("sendDiaryMail"):
                 return DailyMail::sendDailyMail();
+			case("sendFinanceMail_day"):
+			    return FinanceMail::sendFinanceMail_day();
+			case("sendFinanceMail_week"):
+			    return FinanceMail::sendFinanceMail_week();
+			case("sendFinanceMail_month"):
+			    return FinanceMail::sendFinanceMail_month();
             case("reall"):
                     return DailyMail::reall();
             case("syncusers"):
@@ -56,14 +65,14 @@ class XCat
                     return Job::syncnode();
             case("syncnasnode"):
                     return Job::syncnasnode();
+			case("detectGFW"):
+				return Job::detectGFW();
             case("syncnas"):
                     return SyncRadius::syncnas();
             case("dailyjob"):
                 return Job::DailyJob();
             case("checkjob"):
                 return Job::CheckJob();
-            case("syncduoshuo"):
-                return Job::SyncDuoshuo();
             case("userga"):
                 return Job::UserGa();
             case("backup"):
@@ -74,14 +83,60 @@ class XCat
                 return Job::updatedownload();
             case("cleanRelayRule"):
                 return $this->cleanRelayRule();
-            default:
+            case("resetPort"):
+                return $this->resetPort();
+	        case("resetAllPort"):
+                return $this->resetAllPort();
+			case("update"):
+			    return Update::update($this);
+			default:
                 return $this->defaultAction();
         }
     }
 
     public function defaultAction()
     {
-        echo "Memo";
+        echo(PHP_EOL."用法： php xcat [选项]".PHP_EOL);
+		echo("常用选项:".PHP_EOL);
+		echo("  createAdmin - 创建管理员帐号".PHP_EOL);
+		echo("  setTelegram - 设置 Telegram 机器人".PHP_EOL);
+		echo("  cleanRelayRule - 清除所有中转规则".PHP_EOL);
+		echo("  resetPort - 重置单个用户端口".PHP_EOL);
+		echo("  resetAllPort - 重置所有用户端口".PHP_EOL);
+		echo("  initdownload - 下载 SSR 程序至服务器".PHP_EOL);
+		echo("  initQQWry - 下载 IP 解析库".PHP_EOL);
+		echo("  resetTraffic - 重置所有用户流量".PHP_EOL);
+		echo("  update - 更新并迁移配置".PHP_EOL);
+    }
+
+	public function resetPort()
+    {
+		fwrite(STDOUT, "请输入用户id: ");
+        $user=User::Where("id", "=", trim(fgets(STDIN)))->first();
+        $origin_port = $user->port;
+
+        $user->port = Tools::getAvPort();
+
+        $relay_rules = Relay::where('user_id', $user->id)->where('port', $origin_port)->get();
+        foreach ($relay_rules as $rule) {
+            $rule->port = $user->port;
+            $rule->save();
+        }
+		
+		if ($user->save()) {
+            echo "重置成功!\n";
+		}
+    }
+	
+    public function resetAllPort()
+    {
+        $users = User::all();
+        foreach ($users as $user) {
+            $origin_port = $user->port;
+            $user->port = Tools::getAvPort();
+            echo '$origin_port='.$origin_port.'&$user->port='.$user->port."\n";
+            $user->save();
+        }
     }
 
     public function cleanRelayRule()
@@ -104,31 +159,24 @@ class XCat
         }
     }
 
-    public function install()
-    {
-        echo "x cat will install ss-panel v3...../n";
-    }
-
     public function initdownload()
     {
-        system('git clone https://github.com/esdeathlove/panel-download.git '.BASE_PATH."/public/ssr-download/", $ret);
+        system('git clone https://github.com/xcxnig/ssr-download.git '.BASE_PATH."/public/ssr-download/", $ret);
         echo $ret;
     }
 
     public function createAdmin()
     {
-        $this->initQQWry();
-        $this->initdownload();
         echo "add admin/ 创建管理员帐号.....";
         // ask for input
         fwrite(STDOUT, "Enter your email/输入管理员邮箱: ");
         // get input
         $email = trim(fgets(STDIN));
         // write input back
-        fwrite(STDOUT, "Enter password for: $email / 为 $email 添加密码 ");
+        fwrite(STDOUT, "Enter password for: $email / 为 $email 添加密码: ");
         $passwd = trim(fgets(STDIN));
         echo "Email: $email, Password: $passwd! ";
-        fwrite(STDOUT, "Press [Y] to create admin..... 按下[Y]确认来确认创建管理员账户..... ");
+        fwrite(STDOUT, "Press [Y] to create admin..... 按下[Y]确认来确认创建管理员账户..... \n");
         $y = trim(fgets(STDIN));
         if (strtolower($y) == "y") {
             echo "start create admin account";
@@ -157,17 +205,13 @@ class XCat
             $user->node_speedlimit=0;
             $user->theme=Config::get('theme');
 
-
-
             $ga = new GA();
             $secret = $ga->createSecret();
             $user->ga_token=$secret;
             $user->ga_enable=0;
 
-
-
             if ($user->save()) {
-                echo "Successful/添加成功!";
+                echo "Successful/添加成功!\n";
                 return true;
             }
             echo "添加失败";
@@ -183,6 +227,7 @@ class XCat
             User::where("enable", 1)->update([
             'd' => 0,
             'u' => 0,
+            'last_day_t' => 0,
             ]);
         } catch (\Exception $e) {
             echo $e->getMessage();
@@ -203,10 +248,10 @@ class XCat
     public function initQQWry()
     {
         echo("downloading....");
-        $copywrite = file_get_contents("https://github.com/esdeathlove/qqwry-download/raw/master/copywrite.rar");
+        $copywrite = file_get_contents("https://qqwry.mirror.noc.one/copywrite.rar");
         $newmd5 = md5($copywrite);
         file_put_contents(BASE_PATH."/storage/qqwry.md5", $newmd5);
-        $qqwry = file_get_contents("https://github.com/esdeathlove/qqwry-download/raw/master/qqwry.rar");
+        $qqwry = file_get_contents("https://qqwry.mirror.noc.one/qqwry.rar");
         if ($qqwry != "") {
             $key = unpack("V6", $copywrite)[6];
             for ($i=0; $i<0x200; $i++) {

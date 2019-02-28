@@ -20,20 +20,34 @@ class Shop extends Model
                     $content_text .= "添加流量 ".$value." G ";
                     break;
                 case "expire":
-                    $content_text .= "为账号的有效期添加 ".$value." 天 ";
+                    $content_text .= ", 为账号的有效期添加 ".$value." 天 ";
                     break;
                 case "class":
-                    $content_text .= "为账号升级为等级 ".$value." ,有效期 ".$content["class_expire"]." 天";
+                    $content_text .= ", 为账号升级为等级 ".$value." , 有效期 ".$content["class_expire"]." 天 ";
                     break;
                 case "reset":
-                    $content_text .= " 在 ".$content["reset_exp"]." 天内，每 ".$value." 天重置流量为 ".$content["reset_value"]." G ";
+                    $content_text .= ", 在 ".$content["reset_exp"]." 天内 ，每 ".$value." 天重置流量为 ".$content["reset_value"]." G ";
+                    break;
+                case "speedlimit":
+                    if ($value == 0){
+                        $content_text .= ", 用户端口不限速 " ;
+                    }else{
+                        $content_text .= ", 用户端口限速变为".$value." Mbps ";
+                    }
+                    break;
+                case "connector":
+                    if ($value == 0){
+                        $content_text .= ", 用户IP不限制";
+                    }else{
+                        $content_text .= ", 用户IP限制变为 ".$value." 个";
+                    }
                     break;
                 default:
             }
 
-            if ($i<count($content)&&$key!="reset_exp") {
-                $content_text .= ",";
-            }
+            //if ($i<count($content)&&$key!="connector") {
+                //$content_text .= ",";
+            //}
 
             $i++;
         }
@@ -95,6 +109,27 @@ class Shop extends Model
         }
     }
 
+    public function content_extra()
+    {
+        $content =  json_decode($this->attributes['content']);
+        if (isset($content->content_extra)) {
+            $content_extra = $content->content_extra;
+            $content_extra = explode(';',$content_extra);
+            $content_extra_new = array();
+            foreach ($content_extra as $innerContent) {
+                if (!strstr($innerContent,'-')) {
+                    $innerContent = 'check-' . $innerContent;
+                }
+                $innerContent = explode('-',$innerContent);
+                array_push($content_extra_new,$innerContent);
+            }
+            $content_extra = $content_extra_new;
+            return $content_extra;
+        } else {
+            return 0;
+        }
+    }
+
     public function user_class()
     {
         $content =  json_decode($this->attributes['content']);
@@ -110,6 +145,26 @@ class Shop extends Model
         $content =  json_decode($this->attributes['content']);
         if (isset($content->class_expire)) {
             return $content->class_expire;
+        } else {
+            return 0;
+        }
+    }
+
+    public function speedlimit()
+    {
+        $content =  json_decode($this->attributes['content']);
+        if (isset($content->speedlimit)) {
+            return $content->speedlimit;
+        } else {
+            return 0;
+        }
+    }
+
+    public function connector()
+    {
+        $content =  json_decode($this->attributes['content']);
+        if (isset($content->connector)) {
+            return $content->connector;
         } else {
             return 0;
         }
@@ -151,11 +206,14 @@ class Shop extends Model
                     }
                     break;
                 case "class":
-                    if ($user->class==0||$user->class!=$value) {
-                        $user->class_expire=date("Y-m-d H:i:s", time());
-                    }
-                    $user->class_expire=date("Y-m-d H:i:s", strtotime($user->class_expire)+$content["class_expire"]*86400);
                     $user->class=$value;
+                    $user->class_expire=date("Y-m-d H:i:s", time()+$content["class_expire"]*86400);
+                    break;
+                case "speedlimit":
+                    $user->node_speedlimit=$value;
+                    break;
+                case "connector":
+                    $user->node_connector=$value;
                     break;
                 default:
             }
