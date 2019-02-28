@@ -85,14 +85,14 @@ class ApiController extends BaseController
                 $query->where("node_group", "=", $user->node_group)
                     ->orWhere("node_group", "=", 0);
             }
-        )->get();
+        )->orderBy("name")->get();
         
         $mu_nodes = Node::where('sort', 9)->where('node_class', '<=', $user->class)->where("type", "1")->where(
             function ($query) use ($user) {
                 $query->where("node_group", "=", $user->node_group)
                     ->orWhere("node_group", "=", 0);
             }
-        )->get();
+        )->orderBy("name")->get();
         
         $temparray=array();
         foreach ($nodes as $node) {
@@ -118,14 +118,14 @@ class ApiController extends BaseController
                     $mu_user = User::where('port', '=', $mu_node->server)->first();
                     $mu_user->obfs_param = $user->getMuMd5();
                     
-                    array_push($temparray, array("remarks"=>$node->name."- ".$mu_node->server." 端口单端口多用户",
+                    array_push($temparray, array("remarks"=>$node->name."- ".$mu_node->server." 单端口",
                                         "server"=>$node->server,
                                         "server_port"=>$mu_user->port,
                                         "method"=>$mu_user->method,
                                         "group"=>Config::get('appName'),
                                         "obfs"=>str_replace("_compatible", "", (($node->custom_rss==1&&!($mu_user->obfs=='plain'&&$mu_user->protocol=='origin'))?$mu_user->obfs:"plain")),
                                         "obfsparam"=>(($node->custom_rss==1&&!($mu_user->obfs=='plain'&&$mu_user->protocol=='origin'))?$mu_user->obfs_param:""),
-                                        "remarks_base64"=>base64_encode($node->name."- ".$mu_node->server." 端口单端口多用户"),
+                                        "remarks_base64"=>base64_encode($node->name."- ".$mu_node->server." 单端口"),
                                         "password"=>$mu_user->passwd,
                                         "tcp_over_udp"=>false,
                                         "udp_over_tcp"=>false,

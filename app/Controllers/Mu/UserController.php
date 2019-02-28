@@ -16,7 +16,7 @@ class UserController extends BaseController
         $node = Node::where("node_ip", "=", $_SERVER["REMOTE_ADDR"])->where(
             function ($query) {
                 $query->where("sort", "=", 0)
-                    ->orWhere("sort", "=", 10);
+                    ->orWhere("sort", "=", 10)->orWhere("sort","=",12);
             }
         )->first();
         $node->node_heartbeat=time();
@@ -58,11 +58,11 @@ class UserController extends BaseController
         }
 
         $key_list = array('method', 'id', 'port', 'passwd', 'u', 'd', 'enable',
-                          't', 'transfer_enable', 'switch');
+                          't', 'transfer_enable', 'switch', 'email');
 
         $users_output = array();
 
-        foreach ($users as $user_raw) {
+        foreach ($users_raw as $user_raw) {
             if ($user_raw->transfer_enable > $user_raw->u + $user_raw->d) {
                 $user_raw = Tools::keyFilter($user_raw, $key_list);
                 array_push($users_output, $user_raw);
@@ -72,7 +72,7 @@ class UserController extends BaseController
         $res = [
             "ret" => 1,
             "msg" => "ok",
-            "data" => $users
+            "data" => $users_output
         ];
         return $this->echoJson($response, $res);
     }
