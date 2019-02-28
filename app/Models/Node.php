@@ -65,9 +65,9 @@ class Node extends Model
     public function getOnlineUserCount()
     {
         $id = $this->attributes['id'];
-        $log = NodeOnlineLog::where('node_id', $id)->orderBy('id', 'desc')->first();
+        $log = NodeOnlineLog::where('node_id', $id)->where("log_time",">",time()-300)->orderBy('id', 'desc')->first();
         if ($log == null) {
-            return "暂无数据";
+            return 0;
         }
         return $log->online_user;
     }
@@ -113,22 +113,17 @@ class Node extends Model
 
     public function isNodeOnline()
     {
-        $node_heartbeat = $this->attributes['node_heartbeat'];
+        $result = false;
+        $id = $this->attributes['id'];
         $sort = $this->attributes['sort'];
-
-        if (!($sort == 0 || $sort == 7 || $sort == 8 || $sort==10 || $sort==11)) {
-            return null;
+        $node_heartbeat = $this->attributes['node_heartbeat'];
+        $log = NodeOnlineLog::where('node_id', $id)->where("log_time",">",time()-300)->orderBy('id', 'desc')->first();
+        if(!($sort == 0 || $sort == 7 || $sort == 8 || $sort==10 || $sort==11) || $node_heartbeat == 0){
+            $result = null;
+        }else if ($log != null && $log->log_time + 300 > time()) {
+            $result = true;
         }
-
-        if ($node_heartbeat == 0) {
-            return null;
-        }
-
-        if (time() - $node_heartbeat > 300) {
-            return false;
-        } else {
-            return true;
-        }
+        return $result;
     }
 
     public function isNodeTrafficOut()
@@ -159,12 +154,6 @@ class Node extends Model
 
         if ($ip == "") {
             return false;
-        }
-
-        $relay_rules = Relay::where('dist_node_id', $node_id)->get();
-        foreach ($relay_rules as $relay_rule) {
-            $relay_rule->dist_ip = $ip;
-            $relay_rule->save();
         }
 
         $this->attributes['node_ip'] = $ip;

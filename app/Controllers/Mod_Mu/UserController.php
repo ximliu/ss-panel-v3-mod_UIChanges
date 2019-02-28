@@ -10,7 +10,6 @@ use App\Models\Ip;
 use App\Models\DetectLog;
 use App\Controllers\BaseController;
 use App\Utils\Tools;
-use Ramsey\Uuid\Uuid;
 
 class UserController extends BaseController
 {
@@ -20,14 +19,20 @@ class UserController extends BaseController
         $params = $request->getQueryParams();
 
         $node_id = $params['node_id'];
-
-        $node = Node::where("id", "=", $node_id)->first();
-        if ($node == null) {
-            $res = [
-                "ret" => 0
-            ];
-            return $this->echoJson($response, $res);
-        }
+		$node=new Node();
+		if($node_id=='0'){
+			$node = Node::where("node_ip",$_SERVER["REMOTE_ADDR"])->first();
+			$node_id=$node->id;
+		}
+		else{
+			$node = Node::where("id", "=", $node_id)->first();
+			if ($node == null) {
+				$res = [
+					"ret" => 0
+				];
+				return $this->echoJson($response, $res);
+			}
+		}
         $node->node_heartbeat=time();
         $node->save();
 
@@ -75,7 +80,7 @@ class UserController extends BaseController
         foreach ($users_raw as $user_raw) {
             if ($user_raw->transfer_enable > $user_raw->u + $user_raw->d) {
                 $user_raw = Tools::keyFilter($user_raw, $key_list);
-                $user_raw->uuid = Uuid::uuid3(Uuid::NAMESPACE_DNS, $user_raw->passwd)->toString();
+                $user_raw->uuid = $user_raw->getUuid();
                 array_push($users, $user_raw);
             }
         }
@@ -95,6 +100,10 @@ class UserController extends BaseController
         $data = $request->getParam('data');
         $this_time_total_bandwidth = 0;
         $node_id = $params['node_id'];
+		if($node_id=='0'){
+			$node = Node::where("node_ip",$_SERVER["REMOTE_ADDR"])->first();
+			$node_id=$node->id;
+		}
         $node = Node::find($node_id);
 
         if ($node == null) {
@@ -163,6 +172,10 @@ class UserController extends BaseController
 
         $data = $request->getParam('data');
         $node_id = $params['node_id'];
+		if($node_id=='0'){
+			$node = Node::where("node_ip",$_SERVER["REMOTE_ADDR"])->first();
+			$node_id=$node->id;
+		}
         $node = Node::find($node_id);
 
         if ($node == null) {
@@ -199,6 +212,10 @@ class UserController extends BaseController
 
         $data = $request->getParam('data');
         $node_id = $params['node_id'];
+		if($node_id=='0'){
+			$node = Node::where("node_ip",$_SERVER["REMOTE_ADDR"])->first();
+			$node_id=$node->id;
+		}
         $node = Node::find($node_id);
 
         if ($node == null) {

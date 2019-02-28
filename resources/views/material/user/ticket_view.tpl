@@ -23,7 +23,7 @@
 							<div class="card-inner">
 								<div class="form-group form-group-label">
 									<label class="floating-label" for="content">内容</label>
-									<link rel="stylesheet" href="/theme/material/editor/css/editormd.min.css" />
+									<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/editor.md@1.5.0/css/editormd.min.css" />
 									<div id="editormd">
 										<textarea style="display:none;" id="content"></textarea>
 									</div>
@@ -45,7 +45,10 @@
 								<div class="form-group">
 									<div class="row">
 										<div class="col-md-10 col-md-push-1">
-											<button id="submit" type="submit" class="btn btn-block btn-brand waves-attach waves-light">添加</button><button id="close" type="submit" class="btn btn-block btn-brand-accent waves-attach waves-light">添加并关闭</button>
+											<button id="submit" type="submit" class="btn btn-block btn-brand">添加</button>
+											<button id="close" type="submit" class="btn btn-block btn-brand-accent">添加并关闭</button>
+                      <button id="close_directly" type="submit" class="btn btn-block btn-brand-accent waves-attach waves-light">直接关闭</button>
+
 										</div>
 									</div>
 								</div>
@@ -92,7 +95,7 @@
 
 
 
-<script src="/theme/material/editor/editormd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/editor.md@1.5.0/editormd.min.js"></script>
 <script>
     $(document).ready(function () {
         function submit() {
@@ -134,11 +137,42 @@
 			status=0;
             submit();
         });
+
+        $("#close_directly").click(function () {
+            status = 0;
+			$("#result").modal();
+            $("#msg").html("正在提交。");
+            $.ajax({
+                type: "PUT",
+                url: "/user/ticket/{$id}",
+                dataType: "json",
+                data: {
+                    content: '这条工单已被关闭',
+					title: $("#title").val(),
+					status:status
+                },
+                success: function (data) {
+                    if (data.ret) {
+                        $("#result").modal();
+                        $("#msg").html(data.msg);
+                        window.setTimeout("location.href='/user/ticket'", {$config['jump_delay']});
+                    } else {
+                        $("#result").modal();
+                        $("#msg").html(data.msg);
+                    }
+                },
+                error: function (jqXHR) {
+                    $("#msg-error").hide(10);
+                    $("#msg-error").show(100);
+                    $("#msg-error-p").html("发生错误：" + jqXHR.status);
+                }
+            });
+        });
     });
 	
     $(function() {
         editor = editormd("editormd", {
-            path : "/theme/material/editor/lib/", // Autoload modules mode, codemirror, marked... dependents libs path
+             path : "https://cdn.jsdelivr.net/npm/editor.md@1.5.0/lib/", // Autoload modules mode, codemirror, marked... dependents libs path
 			height: 450,
 			saveHTMLToTextarea : true,
 			emoji : true

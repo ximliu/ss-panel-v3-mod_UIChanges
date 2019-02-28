@@ -9,6 +9,7 @@ namespace App\Command;
 
 use App\Models\User;
 use App\Models\Relay;
+use App\Services\Gateway\ChenPay;
 use App\Utils\Hash;
 use App\Utils\Tools;
 use App\Services\Config;
@@ -28,8 +29,10 @@ class XCat
     public function boot()
     {
         switch ($this->argv[1]) {
-            case("install"):
-                return $this->install();
+            case("alipay"):
+                return (new ChenPay())->AliPayListen();
+            case("wxpay"):
+                return (new ChenPay())->WxPayListen();
             case("createAdmin"):
                 return $this->createAdmin();
             case("resetTraffic"):
@@ -62,18 +65,20 @@ class XCat
                     return Job::syncnode();
             case("syncnasnode"):
                     return Job::syncnasnode();
+			case("detectGFW"):
+				return Job::detectGFW();
             case("syncnas"):
                     return SyncRadius::syncnas();
             case("dailyjob"):
                 return Job::DailyJob();
             case("checkjob"):
                 return Job::CheckJob();
-            case("syncduoshuo"):
-                return Job::SyncDuoshuo();
             case("userga"):
                 return Job::UserGa();
             case("backup"):
-                return Job::backup();
+                return Job::backup(false);
+			case("backupfull"):
+				return Job::backup(true);
             case("initdownload"):
                 return $this->initdownload();
             case("updatedownload"):
@@ -84,9 +89,13 @@ class XCat
                 return $this->resetPort();
 	        case("resetAllPort"):
                 return $this->resetAllPort();
-			case("migrateConfig"):
-			    return $this->migrateConfig();
-            default:
+			case("update"):
+			    return Update::update($this);
+            case ("sendDailyUsageByTG"):
+                return $this->sendDailyUsageByTG();
+			case('npmbuild'):
+				return $this->npmbuild();
+			default:
                 return $this->defaultAction();
         }
     }
@@ -103,7 +112,7 @@ class XCat
 		echo("  initdownload - 下载 SSR 程序至服务器".PHP_EOL);
 		echo("  initQQWry - 下载 IP 解析库".PHP_EOL);
 		echo("  resetTraffic - 重置所有用户流量".PHP_EOL);
-		echo("  migrateConfig - 将配置迁移至新配置".PHP_EOL);
+		echo("  update - 更新并迁移配置".PHP_EOL);
     }
 
 	public function resetPort()
@@ -119,12 +128,12 @@ class XCat
             $rule->port = $user->port;
             $rule->save();
         }
-		
+
 		if ($user->save()) {
             echo "重置成功!\n";
 		}
     }
-	
+
     public function resetAllPort()
     {
         $users = User::all();
@@ -135,84 +144,6 @@ class XCat
             $user->save();
         }
     }
-
-	public function migrateConfig()
-	{
-	    global $System_Config;
-	    $copy_result=copy(BASE_PATH."/config/.config.php",BASE_PATH."/config/.config.php.bak");
-		if($copy_result==true){
-			echo('备份成功！'.PHP_EOL);
-		}
-		else{
-			echo('备份失败！迁移终止'.PHP_EOL);
-			return false;
-		}
-		echo(PHP_EOL);
-
-		//将旧config迁移到新config上
-		$config_old=file_get_contents(BASE_PATH."/config/.config.php");
-		$config_new=file_get_contents(BASE_PATH."/config/.config.php.example");
-		$migrated=array();
-		foreach($System_Config as $key => $value_reserve){
-			if($key=='config_migrate_notice'){
-				continue;
-			}
-
-			$regex='/System_Config\[\''.$key.'\'\].*?;/s';
-			$matches_new=array();
-			preg_match($regex,$config_new,$matches_new);
-			if(isset($matches_new[0])==false){
-				echo('未找到配置项：'.$key.' 未能在新config文件中找到，可能已被更名或废弃'.PHP_EOL);
-				continue;
-			}
-
-			$matches_old=array();
-			preg_match($regex,$config_old,$matches_old);
-
-			$config_new=str_replace($matches_new[0],$matches_old[0],$config_new);
-			array_push($migrated,'System_Config[\''.$key.'\']');
-		}
-		echo(PHP_EOL);
-
-		//检查新增了哪些config
-		$regex_new='/System_Config\[\'.*?\'\]/s';
-		$matches_new_all=array();
-		preg_match_all($regex_new,$config_new,$matches_new_all);
-		$new_all=$matches_new_all[0];
-		$differences=array_diff($new_all,$migrated);
-		foreach($differences as $difference){
-			//裁去首位
-			$difference=substr($difference,15);
-			$difference=substr($difference, 0, -2);
-
-			echo('新增配置项：'.$difference.PHP_EOL);
-		}
-		echo('新增配置项通常带有默认值，因此通常即使不作任何改动网站也可以正常运行'.PHP_EOL);
-
-		//输出notice
-		$regex_notice='/System_Config\[\'config_migrate_notice\'\].*?(?=\';)/s';
-		$matches_notice=array();
-		preg_match($regex_notice,$config_new,$matches_notice);
-		$notice_new=$matches_notice[0];
-		$notice_new=substr(
-			$notice_new,strpos(
-				$notice_new,'\'',strpos($notice_new,'=') //查找'='之后的第一个'\''，然后substr其后面的notice
-			)+1
-		);
-		echo('以下是迁移附注：');
-		if(isset($System_Config['config_migrate_notice'])==true){
-		    if($System_Config['config_migrate_notice']!=$notice_new){
-			    echo($notice_new);
-			}
-		}
-		else{
-			echo($notice_new);
-		}
-		echo(PHP_EOL);
-
-		file_put_contents(BASE_PATH."/config/.config.php",$config_new);
-		echo(PHP_EOL.'迁移完成！'.PHP_EOL);
-	}
 
     public function cleanRelayRule()
     {
@@ -234,11 +165,6 @@ class XCat
         }
     }
 
-    public function install()
-    {
-        echo "x cat will install ss-panel v3...../n";
-    }
-
     public function initdownload()
     {
         system('git clone https://github.com/xcxnig/ssr-download.git '.BASE_PATH."/public/ssr-download/", $ret);
@@ -247,15 +173,13 @@ class XCat
 
     public function createAdmin()
     {
-        $this->initQQWry();
-        $this->initdownload();
         echo "add admin/ 创建管理员帐号.....";
         // ask for input
         fwrite(STDOUT, "Enter your email/输入管理员邮箱: ");
         // get input
         $email = trim(fgets(STDIN));
         // write input back
-        fwrite(STDOUT, "Enter password for: $email / 为 $email 添加密码 ");
+        fwrite(STDOUT, "Enter password for: $email / 为 $email 添加密码: ");
         $passwd = trim(fgets(STDIN));
         echo "Email: $email, Password: $passwd! ";
         fwrite(STDOUT, "Press [Y] to create admin..... 按下[Y]确认来确认创建管理员账户..... \n");
@@ -287,14 +211,10 @@ class XCat
             $user->node_speedlimit=0;
             $user->theme=Config::get('theme');
 
-
-
             $ga = new GA();
             $secret = $ga->createSecret();
             $user->ga_token=$secret;
             $user->ga_enable=0;
-
-
 
             if ($user->save()) {
                 echo "Successful/添加成功!\n";
@@ -334,19 +254,8 @@ class XCat
     public function initQQWry()
     {
         echo("downloading....");
-        $copywrite = file_get_contents("https://github.com/esdeathlove/qqwry-download/raw/master/copywrite.rar");
-        $newmd5 = md5($copywrite);
-        file_put_contents(BASE_PATH."/storage/qqwry.md5", $newmd5);
-        $qqwry = file_get_contents("https://github.com/esdeathlove/qqwry-download/raw/master/qqwry.rar");
+        $qqwry = file_get_contents("https://qqwry.mirror.noc.one/QQWry.Dat");
         if ($qqwry != "") {
-            $key = unpack("V6", $copywrite)[6];
-            for ($i=0; $i<0x200; $i++) {
-                $key *= 0x805;
-                $key ++;
-                $key = $key & 0xFF;
-                $qqwry[$i] = chr(ord($qqwry[$i]) ^ $key);
-            }
-            $qqwry = gzuncompress($qqwry);
             $fp = fopen(BASE_PATH."/storage/qqwry.dat", "wb");
             if ($fp) {
                 fwrite($fp, $qqwry);
@@ -355,4 +264,29 @@ class XCat
             echo("finish....");
         }
     }
+    public function sendDailyUsageByTG()
+    {
+        $bot = new \TelegramBot\Api\BotApi(Config::get('telegram_token'));
+        $users = User::where('telegram_id',">",0)->get();
+        foreach ($users as $user){
+            $reply_message ="您当前的流量状况：
+今日已使用 " . $user->TodayusedTraffic() . " " . number_format(($user->u + $user->d - $user->last_day_t) / $user->transfer_enable * 100, 2) . "%
+今日之前已使用 " . $user->LastusedTraffic() . " " . number_format($user->last_day_t / $user->transfer_enable * 100, 2) . "%
+未使用 " . $user->unusedTraffic() . " " . number_format(($user->transfer_enable - ($user->u + $user->d)) / $user->transfer_enable * 100, 2) . "%
+					                        ";
+            try{
+                $bot->sendMessage($user->get_user_attributes("telegram_id"), $reply_message , $parseMode = null, $disablePreview = false, $replyToMessageId = null);
+
+            } catch (\TelegramBot\Api\HttpException $e){
+                echo 'Message: 用户: '.$user->get_user_attributes("user_name")." 删除了账号或者屏蔽了宝宝";
+            }
+        }
+    }
+
+	public function npmbuild(){
+		chdir(BASE_PATH.'/uim-index-dev');
+		system('npm install');
+		system('npm run build');
+		system('cp -u ../public/vuedist/index.html ../resources/views/material/index.tpl');
+	}
 }

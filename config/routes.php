@@ -2,7 +2,7 @@
 
 use Slim\App;
 use Slim\Container;
-use App\Controllers;
+//use App\Controllers;
 use App\Middleware\Auth;
 use App\Middleware\Guest;
 use App\Middleware\Admin;
@@ -68,22 +68,15 @@ $app->add(new WhoopsMiddleware);
 
 // Home
 $app->get('/', 'App\Controllers\HomeController:index');
+$app->get('/indexold', 'App\Controllers\HomeController:indexold');
 $app->get('/404', 'App\Controllers\HomeController:page404');
 $app->get('/405', 'App\Controllers\HomeController:page405');
 $app->get('/500', 'App\Controllers\HomeController:page500');
-$app->get('/pwm_pingback', 'App\Controllers\HomeController:pay_callback');
 $app->post('/notify', 'App\Controllers\HomeController:notify');
-$app->post('/alipay_callback', 'App\Controllers\HomeController:pay_callback');
-$app->post('/pay_callback', 'App\Controllers\HomeController:f2fpay_pay_callback');
-$app->get('/pay_callback', 'App\Controllers\HomeController:pay_callback');
+$app->get('/yft/notify', 'App\Services\Gateway\YftPay:notify');//yft uses GET
 $app->get('/tos', 'App\Controllers\HomeController:tos');
 $app->get('/staff', 'App\Controllers\HomeController:staff');
-$app->get('/gfwlistjs', 'App\Controllers\LinkController:GetGfwlistJs');
 $app->post('/telegram_callback', 'App\Controllers\HomeController:telegram');
-$app->get('/yft/notify', 'App\Controllers\YFTPayCallBackController:yft_notify');
-$app->get('/codepay_callback', 'App\Controllers\HomeController:codepay_callback');
-$app->post('/codepay_callback', 'App\Controllers\HomeController:codepay_pay_callback');
-
 
 // User Center
 $app->group('/user', function () {
@@ -91,6 +84,7 @@ $app->group('/user', function () {
     $this->get('/', 'App\Controllers\UserController:index');
     $this->post('/checkin', 'App\Controllers\UserController:doCheckin');
     $this->get('/node', 'App\Controllers\UserController:node');
+    $this->get('/tutorial', 'App\Controllers\UserController:tutorial');
     $this->get('/announcement', 'App\Controllers\UserController:announcement');
     $this->get('/donate', 'App\Controllers\UserController:donate');
     $this->get('/lookingglass', 'App\Controllers\UserController:lookingglass');
@@ -108,7 +102,6 @@ $app->group('/user', function () {
     $this->post('/coupon_check', 'App\Controllers\UserController:CouponCheck');
     $this->post('/buy', 'App\Controllers\UserController:buy');
 
-
     // Relay Mange
     $this->get('/relay', 'App\Controllers\RelayController:index');
     $this->get('/relay/create', 'App\Controllers\RelayController:create');
@@ -123,8 +116,8 @@ $app->group('/user', function () {
     $this->get('/ticket/{id}/view', 'App\Controllers\UserController:ticket_view');
     $this->put('/ticket/{id}', 'App\Controllers\UserController:ticket_update');
 	
-    $this->post('/invite', 'App\Controllers\UserController:doInvite');
     $this->post('/buy_invite', 'App\Controllers\UserController:buyInvite');
+    $this->post('/custom_invite', 'App\Controllers\UserController:customInvite');
     $this->get('/edit', 'App\Controllers\UserController:edit');
     $this->post('/password', 'App\Controllers\UserController:updatePassword');
     $this->post('/wechat', 'App\Controllers\UserController:updateWechat');
@@ -142,15 +135,14 @@ $app->group('/user', function () {
     $this->get('/backtoadmin', 'App\Controllers\UserController:backtoadmin');
     $this->get('/code', 'App\Controllers\UserController:code');
     //易付通路由定义 start
-    $this->post('/code/yft/pay', 'App\Controllers\YftPay:yftPay');
-    $this->get('/code/yft/pay/result', 'App\Controllers\YftPay:yftPayResult');
-    $this->post('/code/yft', 'App\Controllers\YftPay:yft');
-    $this->get('/yftOrder', 'App\Controllers\YftPay:yftOrder');
+    $this->post('/code/yft/pay', 'App\Services\Gateway\YftPay:yftPay');
+    $this->get('/code/yft/pay/result', 'App\Services\Gateway\YftPay:notify');
+    $this->post('/code/yft', 'App\Services\Gateway\YftPay:yft');
+    $this->get('/yftOrder', 'App\Services\Gateway\YftPay:yftOrder');
     //易付通路由定义 end
     $this->get('/alipay', 'App\Controllers\UserController:alipay');
-    $this->post('/code/f2fpay', 'App\Controllers\UserController:f2fpay');
-    $this->get('/code/f2fpay', 'App\Controllers\UserController:f2fpayget');
-    $this->get('/code/codepay', 'App\Controllers\UserController:codepay');
+    $this->post('/code/f2fpay', 'App\Services\Payment:purchase');
+    $this->get('/code/codepay', 'App\Services\Payment:purchase');
     $this->get('/code_check', 'App\Controllers\UserController:code_check');
     $this->post('/code', 'App\Controllers\UserController:codepost');
     $this->post('/gacheck', 'App\Controllers\UserController:GaCheck');
@@ -160,19 +152,30 @@ $app->group('/user', function () {
     $this->post('/resetport', 'App\Controllers\UserController:ResetPort');
     $this->post('/specifyport', 'App\Controllers\UserController:SpecifyPort');
     $this->post('/pacset', 'App\Controllers\UserController:PacSet');
-    $this->get('/getpcconf', 'App\Controllers\UserController:GetPcConf');
     $this->get('/getiosconf', 'App\Controllers\UserController:GetIosConf');
     $this->post('/unblock', 'App\Controllers\UserController:Unblock');
     $this->get('/bought', 'App\Controllers\UserController:bought');
     $this->delete('/bought', 'App\Controllers\UserController:deleteBoughtGet');
 
     $this->get('/url_reset', 'App\Controllers\UserController:resetURL');
+
+    $this->get('/inviteurl_reset', 'App\Controllers\UserController:resetInviteURL');
+
+    //Reconstructed Payment System
+    $this->post('/payment/purchase', 'App\Services\Payment:purchase');
+    $this->get('/payment/return', 'App\Services\Payment:returnHTML');
 })->add(new Auth());
+
+$app->group('/payment', function () {
+    $this->post('/notify', 'App\Services\Payment:notify');
+    $this->post('/notify/{type}', 'App\Services\Payment:notify');
+    $this->post('/status', 'App\Services\Payment:getStatus');
+});
 
 // Auth
 $app->group('/auth', function () {
     $this->get('/login', 'App\Controllers\AuthController:login');
-    $this->get('/qrcode_check', 'App\Controllers\AuthController:qrcode_check');
+    $this->post('/qrcode_check', 'App\Controllers\AuthController:qrcode_check');
     $this->post('/login', 'App\Controllers\AuthController:loginHandle');
     $this->post('/qrcode_login', 'App\Controllers\AuthController:qrcode_loginHandle');
     $this->get('/register', 'App\Controllers\AuthController:register');
@@ -180,6 +183,7 @@ $app->group('/auth', function () {
     $this->post('/send', 'App\Controllers\AuthController:sendVerify');
     $this->get('/logout', 'App\Controllers\AuthController:logout');
     $this->get('/telegram_oauth', 'App\Controllers\AuthController:telegram_oauth');
+    $this->get('/login_getCaptcha', 'App\Controllers\AuthController:getCaptcha');
 })->add(new Guest());
 
 // Password
@@ -194,6 +198,7 @@ $app->group('/password', function () {
 $app->group('/admin', function () {
     $this->get('', 'App\Controllers\AdminController:index');
     $this->get('/', 'App\Controllers\AdminController:index');
+
     $this->get('/trafficlog', 'App\Controllers\AdminController:trafficLog');
     $this->post('/trafficlog/ajax', 'App\Controllers\AdminController:ajax_trafficLog');
     // Node Mange
@@ -287,7 +292,7 @@ $app->group('/admin', function () {
     $this->put('/user/{id}', 'App\Controllers\Admin\UserController:update');
     $this->delete('/user', 'App\Controllers\Admin\UserController:delete');
     $this->post('/user/changetouser', 'App\Controllers\Admin\UserController:changetouser');
-    $this->get('/user/ajax', 'App\Controllers\Admin\UserController:ajax');
+    $this->post('/user/ajax', 'App\Controllers\Admin\UserController:ajax');
 
 
     $this->get('/coupon', 'App\Controllers\AdminController:coupon');
@@ -300,7 +305,7 @@ $app->group('/admin', function () {
     $this->get('/sys', 'App\Controllers\AdminController:sys');
     $this->get('/logout', 'App\Controllers\AdminController:logout');
     $this->post('/payback/ajax', 'App\Controllers\AdminController:ajax_payback');
-    $this->get('/yftOrder', 'App\Controllers\YftPay:yftOrderForAdmin');
+    $this->get('/yftOrder', 'App\Services\Gateway\YftPay:yftOrderForAdmin');
 })->add(new Admin());
 
 // API
@@ -355,14 +360,43 @@ $app->group('/link', function () {
 });
 
 $app->group('/user', function () {
-    $this->post("/doiam", "App\Utils\DoiAMPay:handle");
+    $this->post("/doiam", "App\Services\Payment:purchase");
 })->add(new Auth());
 $app->group("/doiam", function () {
-    $this->post("/callback/{type}", "App\Utils\DoiAMPay:handle_callback");
-    $this->get("/return/alipay", "App\Utils\DoiAMPay:handle_return");
-    $this->post("/status", "App\Utils\DoiAMPay:status");
+    $this->post("/callback/{type}", "App\Services\Payment:notify");
+    $this->get("/return/alipay", "App\Services\Payment:returnHTML");
+    $this->post("/status", "App\Services\Payment:getStatus");
 });
 
+// Vue
+
+$app->get('/logout', 'App\Controllers\VueController:vuelogout');
+$app->get('/globalconfig', 'App\Controllers\VueController:getGlobalConfig');
+$app->get('/getuserinfo', 'App\Controllers\VueController:getUserInfo');
+$app->post('/getuserinviteinfo', 'App\Controllers\VueController:getUserInviteInfo');
+$app->get('/getusershops', 'App\Controllers\VueController:getUserShops');
+$app->get('/getallresourse', 'App\Controllers\VueController:getAllResourse');
+$app->get('/getnewsubtoken', 'App\Controllers\VueController:getNewSubToken');
+$app->get('/getnewinvotecode', 'App\Controllers\VueController:getNewInviteCode');
+$app->get('/gettransfer', 'App\Controllers\VueController:getTransfer');
+$app->get('/getCaptcha', 'App\Controllers\VueController:getCaptcha');
+$app->post('/getChargeLog', 'App\Controllers\VueController:getChargeLog');
+
+/**
+ * chenPay
+ */
+$app->group('/user', function () {
+    $this->get("/chenPay", "App\Services\Payment:purchase");
+    $this->get('/orderDelete', 'App\Controllers\UserController:orderDelete');
+})->add(new Auth());
+$app->group("/chenPay", function () {
+    $this->get("/status", "App\Services\Payment:getStatus");
+});
+$app->group('/admin', function () {
+    $this->get('/editConfig', 'App\Controllers\AdminController:editConfig');
+    $this->post('/saveConfig', 'App\Controllers\AdminController:saveConfig');
+})->add(new Admin());
+// chenPay end
 
 // Run Slim Routes for App
 $app->run();

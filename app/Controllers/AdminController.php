@@ -8,6 +8,8 @@ use App\Models\TrafficLog;
 use App\Models\Payback;
 use App\Models\Coupon;
 use App\Models\User;
+use App\Services\Gateway\ChenPay;
+use App\Utils\AliPay;
 use App\Utils\Tools;
 use App\Services\Analytics;
 
@@ -31,6 +33,17 @@ class AdminController extends UserController
         return $this->view()->assign('nodes', $nodes)->display('admin/node.tpl');
     }
 
+
+    public function editConfig($request, $response, $args)
+    {
+        return (new ChenPay())->editConfig();
+    }
+
+    public function saveConfig($request, $response, $args)
+    {
+        return (new ChenPay())->saveConfig($request);
+    }
+
     public function sys()
     {
         return $this->view()->display('admin/index.tpl');
@@ -50,7 +63,7 @@ class AdminController extends UserController
         $table_config['ajax_url'] = 'payback/ajax';
         return $this->view()->assign('table_config', $table_config)->display('admin/invite.tpl');
     }
-
+	
     public function addInvite($request, $response, $args)
     {
         $num = $request->getParam('num');
@@ -103,8 +116,39 @@ class AdminController extends UserController
     {
         $code = new Coupon();
         $code->onetime=$request->getParam('onetime');
+		$generate_type=$request->getParam('generate_type');
+		$final_code=$request->getParam('prefix');
 
-        $code->code=$request->getParam('prefix').Tools::genRandomChar(8);
+		if(empty($final_code)&&($generate_type==1||$generate_type==3)){
+			$res['ret'] = 0;
+			$res['msg'] = "优惠码不能为空";
+			return $response->getBody()->write(json_encode($res));
+		}
+
+		if($generate_type==1){
+			if(Coupon::where('code',$final_code)->count()!=0){
+				$res['ret'] = 0;
+				$res['msg'] = "优惠码已存在";
+				return $response->getBody()->write(json_encode($res));
+			}
+		}
+		else{
+			while(true){
+				if($generate_type==2){
+					$temp_code=Tools::genRandomChar(8);
+				}
+				elseif($generate_type==3){
+					$temp_code=$final_code.Tools::genRandomChar(8);
+				}
+
+				if(Coupon::where('code',$temp_code)->count()==0){
+					$final_code=$temp_code;
+					break;
+				}
+			}
+		}
+
+        $code->code = $final_code;
         $code->expire=time()+$request->getParam('expire')*3600;
         $code->shop=$request->getParam('shop');
         $code->credit=$request->getParam('credit');
