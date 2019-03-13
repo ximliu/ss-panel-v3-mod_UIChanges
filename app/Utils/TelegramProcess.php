@@ -10,16 +10,15 @@ class TelegramProcess
 {
     private static $all_rss = [
         "clean_link"=>"重置订阅",
-        "?sub=2" => "SS订阅" ,
         "?sub=1" => "SSR订阅",
         "?sub=3" => "V2ray订阅",
         "?sub=5" => "Shadowrocket",
-        "?sub=4" => "Kitsunebi or v2rayNG",
+        "?sub=4" => "Kitsunebi or V2rayNG or BifrostV",
         "?surge=2" => "Surge 2.x",
         "?surge=3" => "Surge 3.x",
         "?ssd=1" => "SSD",
         "?clash=1" => "Clash",
-        "?surfboard=1" => "surfboard",
+        "?surfboard=1" => "Surfboard",
         "?quantumult=3" => "Quantumult(完整配置)"
         ];
 
@@ -42,7 +41,7 @@ class TelegramProcess
                     $bot->sendMessage($user->get_user_attributes("telegram_id"), "两种方法:\n 方法一:\n  1.点击打开以下配置文件\n  2. 选择分享->拷贝到\"Quantumult\"\n  3.选择更新配置\n 方法二:\n  1.长按配置文件\n  2. 选择更多->分享->拷贝\n  3.点击跳转APP,到Quan中保存" , $parseMode = null, $disablePreview = false, $replyToMessageId = null,$replyMarkup=$keyboard);
                     $filepath ='/tmp/tg_'.$ssr_sub_token.'.txt';
                     $fh = fopen($filepath, 'w+');
-                    $string = LinkController::GetQuantumult($user,0,3);
+                    $string = LinkController::GetQuantumult($user,3);
                     fwrite($fh, $string);
                     fclose($fh);
                     $bot->sendDocument($user->get_user_attributes("telegram_id"), new \CURLFile($filepath,'','quantumult_'.$ssr_sub_token.'.conf'));

@@ -93,7 +93,7 @@ class XCat
                 return $this->resetAllPort();
 			case("update"):
 			    return Update::update($this);
-            case ("sendDailyUsageByTG"):
+            case("sendDailyUsageByTG"):
                 return $this->sendDailyUsageByTG();
 			case('npmbuild'):
 				return $this->npmbuild();
@@ -246,7 +246,6 @@ class XCat
         return "reset traffic successful";
     }
 
-
     public function setTelegram()
     {
         $bot = new \TelegramBot\Api\BotApi(Config::get('telegram_token'));
@@ -268,6 +267,7 @@ class XCat
             echo("finish....");
         }
     }
+
     public function sendDailyUsageByTG()
     {
         $bot = new \TelegramBot\Api\BotApi(Config::get('telegram_token'));
@@ -292,14 +292,15 @@ class XCat
 		system('npm install');
 		system('npm run build');
 		system('cp -u ../public/vuedist/index.html ../resources/views/material/index.tpl');
-	}
+    }
+    
     public function iptest()
     {   $nodes = Node::all();
 
         foreach ($nodes as $node)  {
             $ip ="";
             $server="";
-            if ($node->sort == 11) {
+            if ($node->sort == 11 || $node->sort == 12) {
                 $server_list = explode(";", $node->server);
                 $server = $server_list[0];
                 if(!Tools::is_ip($server_list[0])){

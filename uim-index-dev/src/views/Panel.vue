@@ -77,7 +77,7 @@
                   <span>订阅链接</span>
                   <span class="link-reset relative flex justify-center text-center">
                     <button @click="showToolTip('resetConfirm')" class="tips tips-red">
-                      <font-awesome-icon icon="sync-alt" />&nbsp;重置链接
+                      <font-awesome-icon icon="sync-alt"/>&nbsp;重置链接
                     </button>
                     <uim-tooltip
                       v-show="toolTips.resetConfirm"
@@ -87,10 +87,10 @@
                         <span>确定要重置订阅链接？</span>
                         <div>
                           <button @click="resetSubscribLink" class="tips tips-green">
-                            <font-awesome-icon icon="check" fixed-width />
+                            <font-awesome-icon icon="check" fixed-width/>
                           </button>
                           <button @click="hideToolTip('resetConfirm')" class="tips tips-red">
-                            <font-awesome-icon icon="times" fixed-width />
+                            <font-awesome-icon icon="times" fixed-width/>
                           </button>
                         </div>
                       </template>
@@ -100,7 +100,7 @@
                 <transition name="rotate-fade" mode="out-in">
                   <div class="input-copy" :key="typeToken.subKey">
                     <div class="pure-g align-center relative">
-                      <span class="pure-u-6-24">{{currentDlType === 'SSR' ? '普通端口:' : '订阅链接:'}}</span>
+                      <span class="pure-u-6-24">订阅链接</span>
                       <span class="pure-u-18-24 pure-g relative flex justify-center text-center">
                         <input
                           v-uimclip="{ onSuccess:successCopied }"
@@ -121,35 +121,6 @@
                         >
                           <template #tooltip-inner>
                             <span>{{typeToken.subUrl}}</span>
-                          </template>
-                        </uim-tooltip>
-                      </span>
-                    </div>
-                    <div
-                      v-if="currentDlType === 'SSR' && mergeSub !== 'true'"
-                      class="pure-g align-center relative"
-                    >
-                      <span class="pure-u-6-24">单端口:</span>
-                      <span class="pure-u-18-24 pure-g relative flex justify-center text-center">
-                        <input
-                          v-uimclip="{ onSuccess:successCopied }"
-                          :data-uimclip="suburlMu1"
-                          @mouseenter="showToolTip('mu1')"
-                          @mouseleave="hideToolTip('mu1')"
-                          :class="{ 'sublink-reset':subLinkTrans }"
-                          class="tips tips-blue pure-u-1"
-                          type="text"
-                          name
-                          id
-                          :value="suburlMu1"
-                          readonly
-                        >
-                        <uim-tooltip
-                          v-show="toolTips.mu1"
-                          class="uim-tooltip-top flex justify-center"
-                        >
-                          <template #tooltip-inner>
-                            <span>{{suburlMu1}}</span>
                           </template>
                         </uim-tooltip>
                       </span>
@@ -415,15 +386,19 @@ export default {
     },
     resetSubscribLink() {
       _get("/getnewsubtoken", "include").then(r => {
-        this.ssrSubToken = r.arr.ssr_sub_token;
-        this.hideToolTip("resetConfirm");
-        this.showTransition("subLinkTrans");
-        let callConfig = {
-          msg: "已重置您的订阅链接，请变更或添加您的订阅链接！",
-          icon: "bell",
-          time: 1500
-        };
-        this.callMsgr(callConfig);
+        if (r.ret === 1) {
+          this.ssrSubToken = r.arr.ssr_sub_token;
+          this.hideToolTip("resetConfirm");
+          this.showTransition("subLinkTrans");
+          let callConfig = {
+            msg: "已重置您的订阅链接，请变更或添加您的订阅链接！",
+            icon: "bell",
+            time: 1500
+          };
+          this.callMsgr(callConfig);
+        } else if (r.ret === -1) {
+          this.ajaxNotLogin();
+        }
       });
     },
     scrollPage(token) {
@@ -474,6 +449,8 @@ export default {
           });
           this.baseUrl = r.info.baseUrl;
           this.mergeSub = r.info.mergeSub;
+        } else if (r.ret === -1) {
+          this.ajaxNotLogin();
         }
       })
       .then(r => {
