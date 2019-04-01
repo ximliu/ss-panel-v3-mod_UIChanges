@@ -19,6 +19,7 @@ use App\Models\BlockIp;
 use App\Models\TelegramSession;
 use App\Models\EmailVerify;
 use App\Services\Config;
+use App\Services\Password;
 use App\Utils\DNSoverHTTPS;
 use App\Utils\Radius;
 use App\Utils\Tools;
@@ -36,23 +37,17 @@ class Job
     {
         $nodes = Node::all();
         foreach ($nodes as $node) {
-            if ($node->sort == 11 or $node->sort =12) {
-				$server_list = explode(";", $node->server);
-				if(!Tools::is_ip($server_list[0])){
-					if($node->changeNodeIp($server_list[0])){
-						$node->save();
-					}					
-				}
-			} else if($node->sort == 0 || $node->sort == 1 || $node->sort == 10){
-				if(!Tools::is_ip($node->server)){
-					if($node->changeNodeIp($node->server)){
-						$node->save();
-						if ($node->sort == 0 || $node->sort == 10) {
-							Tools::updateRelayRuleIp($node);
-						}
-					}					
-				}		
-			}			
+            if (in_array($node->sort, array(0, 1, 10, 11, 12, 13))) {
+                $server_list = explode(";", $node->server);
+                if (!Tools::is_ip($server_list[0])) {
+                    if ($node->changeNodeIp($server_list[0])) {
+                        $node->save();
+                    }
+                }
+                if (in_array($node->sort, array(0, 10, 12))) {
+                    Tools::updateRelayRuleIp($node);
+                }
+            }
         }
     }
 
@@ -69,7 +64,7 @@ class Job
 		}
 		else{
 			system('mysqldump --user='.Config::get('db_username').' --password='.Config::get('db_password').' --host='.$db_address_array[0].' '.(isset($db_address_array[1])?'-P '.$db_address_array[1]:'').' '.Config::get('db_database').' announcement auto blockip bought code coupon disconnect_ip link login_ip payback radius_ban shop speedtest ss_invite_code ss_node ss_password_reset ticket unblockip user user_token email_verify detect_list relay paylist> /tmp/ssmodbackup/mod.sql', $ret);
-			system('mysqldump --opt --user='.Config::get('db_username').' --password='.Config::get('db_password').' --host='.$db_address_array[0].' '.(isset($db_address_array[1])?'-P '.$db_address_array[1]:'').' -d '.Config::get('db_database').' alive_ip ss_node_info ss_node_online_log user_traffic_log detect_log telegram_session yft_order_info >> /tmp/ssmodbackup/mod.sql', $ret);
+			system('mysqldump --opt --user='.Config::get('db_username').' --password='.Config::get('db_password').' --host='.$db_address_array[0].' '.(isset($db_address_array[1])?'-P '.$db_address_array[1]:'').' -d '.Config::get('db_database').' alive_ip ss_node_info ss_node_online_log user_traffic_log detect_log telegram_session >> /tmp/ssmodbackup/mod.sql', $ret);
 			if (Config::get('enable_radius')=='true') {
 			    $db_address_array = explode(':', Config::get('radius_db_host'));
 			    system('mysqldump --user='.Config::get('radius_db_user').' --password='.Config::get('radius_db_password').' --host='.$db_address_array[0].' '.(isset($db_address_array[1])?'-P '.$db_address_array[1]:'').''.Config::get('radius_db_database').'> /tmp/ssmodbackup/radius.sql', $ret);
@@ -115,7 +110,7 @@ class Job
         $nodes = Node::all();
         foreach ($nodes as $node) {
             $rule = preg_match("/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/",$node->server);
-            if (!$rule && (!$node->sort || $node->sort == 10)) {
+            if (!$rule && (!$node->sort || $node->sort == 10 || $node->sort == 12 || $node->sort == 13)) {
                 $ip=gethostbyname($node->server);
                 if ($ip == "127.0.0.1"){
                     $ip = DNSoverHTTPS::gethostbyName($node->server);
@@ -132,7 +127,7 @@ class Job
     {
         $nodes = Node::all();
         foreach ($nodes as $node) {
-            if ($node->sort == 0 || $node->sort == 10 || $node->sort == 11 ||$node->sort ==12 ) {
+            if ($node->sort == 0 || $node->sort == 10 || $node->sort == 11 ||$node->sort ==12||$node->sort==13 ) {
                 if (date("d")==$node->bandwidthlimit_resetday) {
                     $node->node_bandwidth=0;
                     $node->save();
@@ -151,6 +146,7 @@ class Job
 
         //auto reset
         $boughts=Bought::all();
+        $boughted_users = array();
         foreach ($boughts as $bought) {
             $user=User::where("id", $bought->userid)->first();
 
@@ -167,6 +163,7 @@ class Job
             }
 
             if($shop->reset() != 0 && $shop->reset_value() != 0 && $shop->reset_exp() != 0) {
+                $boughted_users[]=$bought->userid;
               if(time() - $shop->reset_exp() * 86400 < $bought->datetime) {
                 if(intval((time() - $bought->datetime) / 86400) % $shop->reset() == 0 && intval((time() - $bought->datetime) / 86400) != 0) {
                   echo("流量重置-".$user->id."\n");
@@ -198,7 +195,9 @@ class Job
         foreach ($users as $user) {
             $user->last_day_t=($user->u+$user->d);
             $user->save();
-
+            if (in_array($user->id,$boughted_users)){
+                continue;
+            }
             if (date("d") == $user->auto_reset_day) {
                 $user->u = 0;
                 $user->d = 0;
@@ -218,6 +217,8 @@ class Job
                     echo $e->getMessage();
                 }
             }
+
+
         }
 
 
@@ -461,7 +462,7 @@ class Job
                             echo $e->getMessage();
                         }
 
-                        if (Config::get('enable_cloudxns')=='true' && ($node->sort==0 || $node->sort==10 ||$node->sort==12)) {
+                        if (Config::get('enable_cloudxns')=='true' && ($node->sort==0 || $node->sort==10 ||$node->sort==12||$node->sort==13)) {
                             $api=new Api();
                             $api->setApiKey(Config::get("cloudxns_apikey"));//修改成自己API KEY
                             $api->setSecretKey(Config::get("cloudxns_apisecret"));//修改成自己的SECERET KEY
@@ -524,7 +525,7 @@ class Job
                         echo $e->getMessage();
                     }
 
-                    if (Config::get('enable_cloudxns')=='true'&& ($node->sort==0 || $node->sort==10||$node->sort==12)) {
+                    if (Config::get('enable_cloudxns')=='true'&& ($node->sort==0 || $node->sort==10||$node->sort==12||$node->sort==13)) {
                         $api=new Api();
                         $api->setApiKey(Config::get("cloudxns_apikey"));//修改成自己API KEY
                         $api->setSecretKey(Config::get("cloudxns_apisecret"));//修改成自己的SECERET KEY
@@ -841,7 +842,7 @@ class Job
 							catch (\Exception $e) {
 								echo $e->getMessage();
 							}
-							if (Config::get('enable_cloudxns')=='true' && ($node->sort==0 || $node->sort==10 ||$node->sort==12)) {
+							if (Config::get('enable_cloudxns')=='true' && ($node->sort==0 || $node->sort==10 ||$node->sort==12||$node->sort==13)) {
 								$api=new Api();
 								$api->setApiKey(Config::get("cloudxns_apikey"));
 								//修改成自己API KEY
@@ -896,7 +897,7 @@ class Job
 							catch (\Exception $e) {
 								echo $e->getMessage();
 							}
-							if (Config::get('enable_cloudxns')=='true'&& ($node->sort==0 || $node->sort==10||$node->sort==12)) {
+							if (Config::get('enable_cloudxns')=='true'&& ($node->sort==0 || $node->sort==10||$node->sort==12||$node->sort==13)) {
 								$api=new Api();
 								$api->setApiKey(Config::get("cloudxns_apikey"));
 								//修改成自己API KEY
