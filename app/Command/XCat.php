@@ -12,6 +12,7 @@ use App\Models\Relay;
 use App\Services\Gateway\ChenPay;
 use App\Utils\Hash;
 use App\Utils\Tools;
+use App\Utils\Discord;
 use App\Services\Config;
 
 use App\Utils\GA;
@@ -39,6 +40,8 @@ class XCat
                 return $this->createAdmin();
             case("resetTraffic"):
                 return $this->resetTraffic();
+            case("setDiscord"):
+                return Discord::set();
             case("setTelegram"):
                 return $this->setTelegram();
             case("initQQWry"):
@@ -109,6 +112,7 @@ class XCat
         echo(PHP_EOL."用法： php xcat [选项]".PHP_EOL);
 		echo("常用选项:".PHP_EOL);
 		echo("  createAdmin - 创建管理员帐号".PHP_EOL);
+		echo("  setDiscord - 设置 Discord 机器人".PHP_EOL);
 		echo("  setTelegram - 设置 Telegram 机器人".PHP_EOL);
 		echo("  cleanRelayRule - 清除所有中转规则".PHP_EOL);
 		echo("  resetPort - 重置单个用户端口".PHP_EOL);
@@ -250,7 +254,7 @@ class XCat
     {
         $bot = new \TelegramBot\Api\BotApi(Config::get('telegram_token'));
         if ($bot->setWebhook(Config::get('baseUrl')."/telegram_callback?token=".Config::get('telegram_request_token')) == 1) {
-            echo("设置成功！");
+            echo("设置成功！".PHP_EOL);
         }
     }
 
@@ -295,26 +299,19 @@ class XCat
     }
     
     public function iptest()
-    {   $nodes = Node::all();
-
-        foreach ($nodes as $node)  {
-            $ip ="";
-            $server="";
-            if ($node->sort == 11) {
+    {
+        $nodes = Node::all();
+        foreach ($nodes as $node) {
+            $ip = "";
+            $server = "";
+            if (in_array($node->sort, array(0, 1, 10, 11, 12, 13))) {
                 $server_list = explode(";", $node->server);
                 $server = $server_list[0];
-                if(!Tools::is_ip($server_list[0])){
-
+                if (!Tools::is_ip($server)) {
                     $ip = DNSoverHTTPS::gethostbyName($server); // returns a collection of DNS A Records
                 }
-            } else if($node->sort == 0 || $node->sort == 1 || $node->sort == 10){
-                $server = $node->server;
-                if(!Tools::is_ip($node->server)){
-                    $ip = DNSoverHTTPS::gethostbyName($server);
-                }
             }
-            if ($server!="" and $ip !=""){
-
+            if ($server!="" and $ip !="") {
                 echo "Server: ".$server." ip address: ".$ip."\n";
             }
         }
