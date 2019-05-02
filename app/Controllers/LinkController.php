@@ -137,27 +137,46 @@ class LinkController extends BaseController
         }
 
         if (in_array($quantumult, array(1, 2, 3))) {
-            $newResponse = $response->withHeader('Content-type', ' application/octet-stream; charset=utf-8')->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate')->withHeader('Content-Disposition', ' attachment; filename=Quantumult.conf');
+            $newResponse = $response
+            ->withHeader('Content-type', ' application/octet-stream; charset=utf-8')
+            ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+            ->withHeader('Content-Disposition', ' attachment; filename=Quantumult.conf');
             $newResponse->getBody()->write(LinkController::GetQuantumult($user, $quantumult));
             return $newResponse;
         } elseif (in_array($surge, array(1, 2, 3))) {
-            $newResponse = $response->withHeader('Content-type', ' application/octet-stream; charset=utf-8')->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate')->withHeader('Content-Disposition', ' attachment; filename=Surge.conf');
+            $newResponse = $response
+            ->withHeader('Content-type', ' application/octet-stream; charset=utf-8')
+            ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+            ->withHeader('Content-Disposition', ' attachment; filename=Surge.conf');
             $newResponse->getBody()->write(LinkController::GetSurge($user, $surge));
             return $newResponse;
         } elseif ($surfboard == 1) {
-            $newResponse = $response->withHeader('Content-type', ' application/octet-stream; charset=utf-8')->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate')->withHeader('Content-Disposition', ' attachment; filename=Surfboard.conf');
+            $newResponse = $response
+            ->withHeader('Content-type', ' application/octet-stream; charset=utf-8')
+            ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+            ->withHeader('Content-Disposition', ' attachment; filename=Surfboard.conf');
             $newResponse->getBody()->write(LinkController::GetSurfboard($user));
             return $newResponse;
         } elseif ($clash == 1) {
-            $newResponse = $response->withHeader('Content-type', ' application/octet-stream; charset=utf-8')->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate')->withHeader('Content-Disposition', ' attachment; filename=config.yml');
+            $newResponse = $response
+            ->withHeader('Content-type', ' application/octet-stream; charset=utf-8')
+            ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+            ->withHeader('Content-Disposition', ' attachment; filename=config.yml');
             $newResponse->getBody()->write(LinkController::GetClash($user, $opts));
             return $newResponse;
         } elseif ($ssd == 1) {
-            $newResponse = $response->withHeader('Content-type', ' application/octet-stream; charset=utf-8')->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate')->withHeader('Content-Disposition', ' attachment; filename=SSD.txt');
+            $newResponse = $response
+            ->withHeader('Content-type', ' application/octet-stream; charset=utf-8')
+            ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+            ->withHeader('Content-Disposition', ' attachment; filename=SSD.txt');
             $newResponse->getBody()->write(LinkController::GetSSD($user));
             return $newResponse;
         } else {
-            $newResponse = $response->withHeader('Content-type', ' application/octet-stream; charset=utf-8')->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate')->withHeader('Content-Disposition', ' attachment; filename=' . $token . '.txt');
+            $newResponse = $response
+            ->withHeader('Content-type', ' application/octet-stream; charset=utf-8')
+            ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+            ->withHeader('Content-Disposition', ' attachment; filename=' . $token . '.txt')
+            ->withHeader('Subscription-Userinfo', ' upload='.$user->u.'; download='.$user->d.'; total='.$user->transfer_enable.'; expire='.strtotime($user->class_expire).'');
             $newResponse->getBody()->write(LinkController::GetSub($user, $sub, $extend));
             return $newResponse;
         }
@@ -456,24 +475,24 @@ class LinkController extends BaseController
         $return_url = '';
         switch ($sub) {
             case 1: // SSR
-                $return_url .= $extend==0?:URL::getUserTraffic($user, 1).PHP_EOL;
+                $return_url .= $extend==0?"":URL::getUserTraffic($user, 1).PHP_EOL;
                 $return_url .= URL::getAllUrl($user, 0, 0).PHP_EOL;
             break;
             case 2: // SS
-                $return_url .= $extend==0?:URL::getUserTraffic($user, 2).PHP_EOL;
+                $return_url .= $extend==0?"":URL::getUserTraffic($user, 2).PHP_EOL;
                 $return_url .= URL::getAllUrl($user, 0, 1).PHP_EOL;
             break;
             case 3: // V2
-                $return_url .= $extend==0?:URL::getUserTraffic($user, 3).PHP_EOL;
+                $return_url .= $extend==0?"":URL::getUserTraffic($user, 3).PHP_EOL;
                 $return_url .= URL::getAllVMessUrl($user).PHP_EOL;
             break;
             case 4: // V2 + SS
-                $return_url .= $extend==0?:URL::getUserTraffic($user, 3).PHP_EOL;
+                $return_url .= $extend==0?"":URL::getUserTraffic($user, 3).PHP_EOL;
                 $return_url .= URL::getAllVMessUrl($user).PHP_EOL;
                 $return_url .= URL::getAllUrl($user, 0, 1).PHP_EOL;
             break;
             case 5: // V2 + SS + SSR
-                $return_url .= $extend==0?:URL::getUserTraffic($user, 1).PHP_EOL;
+                $return_url .= $extend==0?"":URL::getUserTraffic($user, 1).PHP_EOL;
                 $return_url .= URL::getAllVMessUrl($user).PHP_EOL;
                 $return_url .= URL::getAllUrl($user, 0, 0).PHP_EOL;
                 $return_url .= URL::getAllUrl($user, 0, 1).PHP_EOL;
