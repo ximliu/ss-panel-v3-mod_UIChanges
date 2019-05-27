@@ -4,16 +4,10 @@ namespace App\Services;
 
 class Config
 {
-    public static function get($key)
+    // TO DELETE
+    public static function get(string $key)
     {
-        global $System_Config;
-        return $System_Config[$key];
-    }
-
-    public static function set($key, $value)
-    {
-        global $System_Config;
-        $System_Config[$key] = $value;
+        return $_ENV[$key];
     }
 
     public static function getPublicConfig()
