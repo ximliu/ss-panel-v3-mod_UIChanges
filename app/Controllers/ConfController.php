@@ -4,12 +4,17 @@ namespace App\Controllers;
 
 use App\Models\User;
 use App\Services\Config;
+use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  *  ConfController
  */
 class ConfController extends BaseController
 {
+
+    // #------------------------- Surge --------------------------#
+
     public static function SurgeConfs($User, $AllProxys, $Nodes, $Configs)
     {
         $General = ConfController::SurgeConfGeneral($Configs['General']);
@@ -128,7 +133,7 @@ class ConfController extends BaseController
         if (isset($Rules['source']) && $Rules['source'] != "") {
             $sourceURL = trim($Rules['source']);
             // 远程规则仅支持 github 以及 gitlab
-            if (preg_match("/^https:\/\/((gist\.)?github\.com|gitlab\.com)/i", $sourceURL)) {
+            if (preg_match("/^https:\/\/((gist\.)?github\.com|raw\.githubusercontent\.com|gitlab\.com)/i", $sourceURL)) {
                 $return = @file_get_contents($sourceURL);
                 if (!$return) {
                     $return = "// 远程规则加载失败\nGEOIP,CN,DIRECT\nFINAL,DIRECT,dns-failed";
@@ -140,10 +145,126 @@ class ConfController extends BaseController
         return $return;
     }
 
+    // #------------------------- Clash --------------------------#
 
+    public static function ClashConfs($User, $AllProxys, $SourceContent)
+    {
+        try {
+            $Configs = Yaml::parse($SourceContent);
+        } catch (ParseException $exception) {
+            return printf('无法解析 YAML 字符串: %s', $exception->getMessage());
+        }
+        if (isset($Configs['Proxy']) || count($Configs['Proxy']) != 0) {
+            $tmpProxys = array_merge($AllProxys, $Configs['Proxy']);
+        } else {
+            $tmpProxys = $AllProxys;
+        }
+        $Proxys = [];
+        foreach ($tmpProxys as $Proxy) {
+            unset($Proxy['class']);
+            $Proxys[] = $Proxy;
+        }
+        $tmp = ConfController::ClashConfGeneral($Configs['General']);
+        $tmp['Proxy'] = $Proxys;
+        $tmp['Proxy Group'] = ConfController::ClashConfProxyGroup($AllProxys, $Configs['ProxyGroup']);
+        $Conf = "#!MANAGED-CONFIG "
+            . Config::get('baseUrl') . $_SERVER['REQUEST_URI'] .
+            "\n\n#---------------------------------------------------#" .
+            "\n## 上次更新于：" . date("Y-m-d h:i:s") .
+            "\n#---------------------------------------------------#" .
+            "\n\n"
+            . Yaml::dump($tmp, 4, 2) .
+            "\n\nRule:\n"
+            . ConfController::ClashConfRule($Configs['Rule']);
 
-    // 待续 Clash 以及 Quantumult...
+        return $Conf;
+    }
 
+    public static function ClashConfGeneral($General)
+    {
+        if (count($General) != 0) {
+            foreach ($General as $key => $value) {
+                if (!in_array($key, ["port", "socks-port", "redir-port", "allow-lan", "mode", "log-level", "external-controller", "external-ui", "secret", "experimental", "dns"])) {
+                    unset($key);
+                }
+            }
+        }
+        return $General;
+    }
 
+    public static function ClashConfProxyGroup($Nodes, $ProxyGroups)
+    {
+        $return = [];
+        foreach ($ProxyGroups as $ProxyGroup) {
+            $tmp = [];
+            if (in_array($ProxyGroup['type'], ["select", "url-test", "fallback", "load-balance"])) {
+                $proxies = [];
+                if (isset($ProxyGroup['content']['left-proxies']) && count($ProxyGroup['content']['left-proxies']) != 0) {
+                    $proxies = $ProxyGroup['content']['left-proxies'];
+                }
+                $AllRemark = [];
+                if (isset($ProxyGroup['content']['class'])) {
+                    foreach ($Nodes as $item) {
+                        if ($item['class'] == $ProxyGroup['content']['class']) {
+                            $AllRemark[] = $item['name'];
+                        }
+                    }
+                } elseif (isset($ProxyGroup['content']['noclass'])) {
+                    foreach ($Nodes as $item) {
+                        if ($item['class'] != $ProxyGroup['content']['noclass']) {
+                            $AllRemark[] = $item['name'];
+                        }
+                    }
+                } else {
+                    foreach ($Nodes as $item) {
+                        $AllRemark[] = $item['name'];
+                    }
+                }
+                if (isset($ProxyGroup['content']['regex'])) {
+                    foreach ($AllRemark as $item) {
+                        if (!preg_match($ProxyGroup['content']['regex'], $item)) {
+                            unset($item);
+                        }
+                    }
+                }
+                if (isset($ProxyGroup['content']['class']) || isset($ProxyGroup['content']['noclass']) || isset($ProxyGroup['content']['regex'])) {
+                    $proxies = array_merge($proxies, $AllRemark);
+                    if (isset($ProxyGroup['content']['right-proxies']) && count($ProxyGroup['content']['right-proxies']) != 0) {
+                        $proxies = array_merge($proxies, $ProxyGroup['content']['right-proxies']);
+                    }
+                }
+                $tmp = [
+                    "name" => $ProxyGroup['name'],
+                    "type" => $ProxyGroup['type'],
+                    "proxies" => $proxies
+                ];
+                if ($ProxyGroup['type'] != "select") {
+                    $tmp['url'] = $ProxyGroup['url'];
+                    $tmp['interval'] = $ProxyGroup['interval'];
+                }
+                $return[] = $tmp;
+            }
+        }
+        return $return;
+    }
 
+    public static function ClashConfRule($Rules)
+    {
+        $return = "";
+        if (isset($Rules['source']) && $Rules['source'] != "") {
+            $sourceURL = trim($Rules['source']);
+            // 远程规则仅支持 github 以及 gitlab
+            if (preg_match("/^https:\/\/((gist\.)?github\.com|raw\.githubusercontent\.com|gitlab\.com)/i", $sourceURL)) {
+                $return = @file_get_contents($sourceURL);
+                if (!$return) {
+                    $return = "// 远程规则加载失败\nGEOIP,CN,DIRECT\nMATCH,DIRECT";
+                }
+            } else {
+                $return = "// 远程规则仅支持 github 以及 gitlab\nGEOIP,CN,DIRECT\nMATCH,DIRECT";
+            }
+        }
+        return $return;
+    }
+
+    // 待续 Quantumult...
 }
