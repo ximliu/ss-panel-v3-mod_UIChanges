@@ -229,7 +229,7 @@ $System_Config['bitpay_secret']='';
 //其他面板显示设置------------------------------------------------------------------------------------------
 
 #用户文档
-$System_Config['enable_documents'] = 'true';	    //是否开启文档中心
+$System_Config['enable_documents'] = 'true';	    //是否允许未登陆用户查看文档中心
 $System_Config['documents_name'] = $System_Config['appName'] . ' 文档中心';	    //文档中心名称
 $System_Config['remote_documents'] = 'true';	    //是否从远程加载文档中心，否的话请执行 php xcat initdocuments
 $System_Config['documents_source'] = 'https://raw.githubusercontent.com/GeekQu/PANEL_DOC/master/GeekQu';	    //远程文档加载地址
@@ -270,7 +270,7 @@ $System_Config['enable_detect_offline_useScFtqq']='true';
 $System_Config['enable_login_bind_ip']='false';		//是否将登陆线程和IP绑定
 $System_Config['rememberMeDuration']='7';           //登录时记住账号时长天数
 $System_Config['authDriver'] = 'cookie';			//不能更改此项
-$System_Config['pwdMethod'] = 'sha256';				//密码加密 可选 md5, sha256, bcrypt, argon2i, argon2id（argon2i需要至少php7.2）
+$System_Config['pwdMethod'] = 'md5';				//密码加密 可选 md5, sha256, bcrypt, argon2i, argon2id（argon2i需要至少php7.2）
 $System_Config['salt'] = '';						//推荐配合 md5/sha256， bcrypt/argon2i/argon2id 会忽略此项
 $System_Config['sessionDriver'] = 'cookie';			//可选: cookie,redis
 $System_Config['cacheDriver'] = 'cookie';			//可选: cookie,redis

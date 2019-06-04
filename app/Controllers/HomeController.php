@@ -3,20 +3,10 @@
 namespace App\Controllers;
 
 use App\Models\InviteCode;
-use App\Models\User;
-use App\Models\Code;
-use App\Models\Payback;
-use App\Models\Paylist;
 use App\Services\Auth;
 use App\Services\Config;
-use App\Services\Payment;
 use App\Utils\AliPay;
-use App\Utils\Tools;
-use App\Utils\Telegram;
-use App\Utils\Tuling;
 use App\Utils\TelegramSessionManager;
-use App\Utils\QRcode;
-use App\Utils\Pay;
 use App\Utils\TelegramProcess;
 use App\Utils\Spay_tool;
 use App\Utils\Geetest;
@@ -95,7 +85,7 @@ class HomeController extends BaseController
 
     public function telegram($request, $response, $args)
     {
-        $token = $request->getQueryParams()["token"] ?? "";
+        $token = $request->getQueryParams()['token'] ?? '';
 
         if ($token == Config::get('telegram_request_token')) {
             TelegramProcess::process();
@@ -143,10 +133,12 @@ class HomeController extends BaseController
         return $response->getBody()->write(json_encode(['res' => AliPay::setOrder($sn, $url)]));
     }
 
-    public function getDocCenter()
+    public function getDocCenter($request, $response, $args)
     {
-        if (Config::get('enable_documents') != 'true') {
-            return self::index();
+        $user = Auth::getUser();
+        if (!$user->isLogin && Config::get('enable_documents') != 'true') {
+            $newResponse = $response->withStatus(302)->withHeader('Location', '/');
+            return $newResponse;
         }
         $basePath = Config::get('remote_documents') == 'true' ? Config::get('documents_source') : '/docs/GeekQu';
         return $this->view()
