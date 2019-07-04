@@ -57,7 +57,8 @@
                     <div class="auth-help-table auth-row">
                         <div class="checkbox checkbox-adv">
                             <label for="remember_me">
-                                <input class="access-hide" value="week" id="remember_me" name="remember_me" type="checkbox">记住我</input>
+                                <input class="access-hide" value="week" id="remember_me" name="remember_me"
+                                       type="checkbox">记住我</input>
                                 <span class="checkbox-circle"></span>
                                 <span class="checkbox-circle-check"></span>
                                 <span class="checkbox-circle-icon icon">done</span>
@@ -161,43 +162,50 @@
             document.getElementById("login").disabled = true;
 
             $.ajax({
-                type: "POST",
-                url: "/auth/login",
-                dataType: "json",
-                data: {
-                    email: $$getValue('email'),
-                    passwd: $$getValue('passwd'),
-                    code: $$getValue('code'),,{if $recaptcha_sitekey != null}
-                    recaptcha: grecaptcha.getResponse(),{/if}
-                    remember_me: $("#remember_me:checked").val(){if $geetest_html != null},
-                    geetest_challenge: validate.geetest_challenge,
-                    geetest_validate: validate.geetest_validate,
-                    geetest_seccode: validate.geetest_seccode{/if}
-                },
-                success: (data) => {
-                    if (data.ret == 1) {
-                        $("#result").modal();
-                        $$.getElementById('msg').innerHTML = data.msg;
-                        window.setTimeout("location.href='/user'", {$config['jump_delay']});
-                    } else {
-                        $("#result").modal();
-                        $$.getElementById('msg').innerHTML = data.msg;
-                        document.getElementById("login").disabled = false;
-                        {if $geetest_html != null}
-                        captcha.refresh();
-                        {/if}
-                    }
-                },
-                error: (jqXHR) => {
-                    $("#msg-error").hide(10);
-                    $("#msg-error").show(100);
-                    $$.getElementById('msg').innerHTML = `发生错误：${jqXHR.status}`;
+                        type: "POST",
+                        url: "/auth/login",
+                        dataType: "json",
+                        data: {
+                            email: $$getValue('email'),
+                            passwd: $$getValue('passwd'),
+                            code: $$getValue('code'),,{if $recaptcha_sitekey != null}
+                        recaptcha: grecaptcha.getResponse(),{/if}
+                        remember_me: $("#remember_me:checked").val(){if $geetest_html != null},
+                        geetest_challenge: validate.geetest_challenge,
+                        geetest_validate: validate.geetest_validate,
+                        geetest_seccode: validate.geetest_seccode{/if}
+                    },
+                    success
+        :
+            (data) => {
+                if (data.ret == 1) {
+                    $("#result").modal();
+                    $$.getElementById('msg').innerHTML = data.msg;
+                    window.setTimeout("location.href='/user'", {$config['jump_delay']});
+                } else {
+                    $("#result").modal();
+                    $$.getElementById('msg').innerHTML = data.msg;
                     document.getElementById("login").disabled = false;
                     {if $geetest_html != null}
                     captcha.refresh();
                     {/if}
                 }
-            });
+            },
+                    error
+        :
+            (jqXHR) => {
+                $("#msg-error").hide(10);
+                $("#msg-error").show(100);
+                $$.getElementById('msg').innerHTML = `发生错误：${
+                        jqXHR.status
+                        }`;
+                document.getElementById("login").disabled = false;
+                {if $geetest_html != null}
+                captcha.refresh();
+                {/if}
+            }
+        })
+            ;
         }
 
         $("html").keydown(function (event) {
@@ -230,9 +238,9 @@
     <script>
         $(document).ready(function () {
             $("#calltgauth").click(
-                function () {
-                    f();
-                }
+                    function () {
+                        f();
+                    }
             );
 
             function f() {
@@ -265,7 +273,9 @@
                                 },
                                 error: (jqXHR) => {
                                     $("#result").modal();
-                                    $$.getElementById('msg').innerHTML = `发生错误：${jqXHR.status}`;
+                                    $$.getElementById('msg').innerHTML = `发生错误：${
+                                            jqXHR.status
+                                            }`;
                                 }
                             });
 
@@ -279,7 +289,9 @@
                     error: (jqXHR) => {
                         if (jqXHR.status !== 200 && jqXHR.status !== 0) {
                             $("#result").modal();
-                            $$.getElementById('msg').innerHTML = `发生错误：${jqXHR.status}`;
+                            $$.getElementById('msg').innerHTML = `发生错误：${
+                                    jqXHR.status
+                                    }`;
                         }
                     }
                 });
