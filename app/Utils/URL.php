@@ -233,7 +233,7 @@ class URL
             }
             if ($node->custom_rss == 1 && $node->mu_only != -1 && $is_mu != 0) {
                 foreach ($mu_nodes as $mu_node) {
-                    if ($node->sort == 10) {
+                    if ($node->sort == 10) { // ss 中转
                         $relay_rule_id = 0;
                         $relay_rule = Tools::pick_out_relay_rule($node->id, $mu_node->server, $relay_rules);
                         if (($relay_rule != null) && $relay_rule->dist_node() != null) {
@@ -585,7 +585,7 @@ class URL
         if ($relay_rule != null) {
             $node_name .= ' - ' . $relay_rule->dist_node()->name;
         }
-        if ($mu_port != 0) {
+        if ($mu_port != 0 && $node->sort != 13) {
             $mu_user = User::where('port', '=', $mu_port)->where('is_multi_user', '<>', 0)->first();
             if ($mu_user == null) {
                 return;
@@ -627,6 +627,14 @@ class URL
             $return_array['protocol_param'] = $user->protocol_param;
             $return_array['obfs'] = $user->obfs;
             $return_array['obfs_param'] = $user->obfs_param;
+            if (strpos($node->server, ';') !== false) {
+                $node_tmp = Tools::OutPort($node->server, $node->name, $mu_port);
+                if ($mu_port != 0) {
+                    $return_array['port'] = $node_tmp['port'];
+                    $node_name = $node_tmp['name'];
+                }
+                $return_array['address'] = $node_tmp['address'];
+            }
         }
         $return_array['passwd'] = $user->passwd;
         $return_array['method'] = $user->method;

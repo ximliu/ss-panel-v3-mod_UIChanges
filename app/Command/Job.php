@@ -158,7 +158,7 @@ class Job
         Telegram::Send('姐姐姐姐，数据库被清理了，感觉身体被掏空了呢~');
 
         //auto reset
-        $boughts = Bought::where('renew', '<>', 0)->get();
+        $boughts = Bought::all();
         $boughted_users = array();
         foreach ($boughts as $bought) {
             $user = User::where('id', $bought->userid)->first();
@@ -276,7 +276,7 @@ class Job
     //   定时任务开启的情况下，每天自动检测有没有最新版的后端，github源来自Miku
     public static function updatedownload()
     {
-        system('cd ' . BASE_PATH . '/public/ssr-download/ && git pull https://github.com/xcxnig/ssr-download.git');
+        system('cd ' . BASE_PATH . '/public/ssr-download/ && git pull https://github.com/xcxnig/ssr-download.git && git gc');
     }
 
 
