@@ -18,7 +18,6 @@
                             <div class="nodemain">
                                 <div class="nodehead node-flex">
                                     <div class="nodename">帐号等级</div>
-                                    <a href="/user/shop" class="card-tag tag-orange">升级</a>
                                 </div>
                                 <div class="nodemiddle node-flex">
                                     <div class="nodetype">
@@ -43,6 +42,7 @@
                                 {else}
                                     <span><i class="icon icon-md">add_circle</i>升级解锁 VIP 节点</span>
                                 {/if}
+                                <a href="/user/shop" class="card-tag tag-orange">商店</a>
                             </div>
                         </div>
                     </div>
@@ -53,7 +53,6 @@
                             <div class="nodemain">
                                 <div class="nodehead node-flex">
                                     <div class="nodename">余额</div>
-                                    <a href="/user/code" class="card-tag tag-green">充值</a>
                                 </div>
                                 <div class="nodemiddle node-flex">
                                     <div class="nodetype">
@@ -69,7 +68,8 @@
                         </div>
                         <div class="user-info-bottom">
                             <div class="nodeinfo node-flex">
-                                <span href="/user/shop"><i class="icon icon-md">attach_money</i>账户内可用余额</span>
+                                <span><i class="icon icon-md">attach_money</i>账户余额</span>
+                                <a href="/user/code" class="card-tag tag-green">充值</a>
                             </div>
                         </div>
                     </div>
@@ -131,6 +131,179 @@
                             <div class="nodeinfo node-flex">
                                 <span><i class="icon icon-md">signal_cellular_alt</i>账户最高下行网速</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="ui-card-wrap">
+
+                <div class="col-xx-12 col-sm-4">
+                    <div class="card">
+                        <div class="card-main">
+                            <div class="card-inner">
+
+                                {*
+                                <div id="traffic_chart" style="height: 300px; width: 100%;"></div>
+
+                                <script src="/assets/js/canvasjs.min.js"> </script>
+                                <script type="text/javascript">
+                                    var chart = new CanvasJS.Chart("traffic_chart", {
+                                        theme: "light1",
+                                        title: {
+                                            text: "流量使用情况",
+                                            fontFamily: "Impact",
+                                            fontWeight: "normal"
+                                        },
+                                        legend: {
+                                            verticalAlign: "bottom",
+                                            horizontalAlign: "center"
+                                        },
+                                        data: [{
+                                            startAngle: -15,
+                                            indexLabelFontSize: 20,
+                                            indexLabelFontFamily: "Garamond",
+                                            indexLabelFontColor: "darkgrey",
+                                            indexLabelLineColor: "darkgrey",
+                                            indexLabelPlacement: "outside",
+                                            yValueFormatString: "##0.00\"%\"",
+                                            type: "pie",
+                                            showInLegend: true,
+                                            dataPoints: [
+                                                {if $user->transfer_enable != 0}
+                                                {
+                                                    y: {$user->last_day_t/$user->transfer_enable*100},label: "过去已用", legendText:"过去已用 {number_format($user->last_day_t/$user->transfer_enable*100,2)}% {$user->LastusedTraffic()}", indexLabel: "过去已用 {number_format($user->last_day_t/$user->transfer_enable*100,2)}% {$user->LastusedTraffic()}"
+                                                },
+                                                {
+                                                    y: {($user->u+$user->d-$user->last_day_t)/$user->transfer_enable*100},label: "今日已用", legendText:"今日已用 {number_format(($user->u+$user->d-$user->last_day_t)/$user->transfer_enable*100,2)}% {$user->TodayusedTraffic()}", indexLabel: "今日已用 {number_format(($user->u+$user->d-$user->last_day_t)/$user->transfer_enable*100,2)}% {$user->TodayusedTraffic()}"
+                                                },
+                                                {
+                                                    y: {($user->transfer_enable-($user->u+$user->d))/$user->transfer_enable*100},label: "剩余可用", legendText:"剩余可用 {number_format(($user->transfer_enable-($user->u+$user->d))/$user->transfer_enable*100,2)}% {$user->unusedTraffic()}", indexLabel: "剩余可用 {number_format(($user->transfer_enable-($user->u+$user->d))/$user->transfer_enable*100,2)}% {$user->unusedTraffic()}"
+                                                }
+                                                {/if}
+                                            ]
+                                        }
+                                        ]
+                                    });
+
+                                    chart.render();
+                                </script>
+                                *}
+
+                                <div class="progressbar">
+                                    <div class="before"></div>
+                                    <div class="bar tuse color3"
+                                         style="width:calc({($user->transfer_enable==0)?0:($user->u+$user->d-$user->last_day_t)/$user->transfer_enable*100}%);"></div>
+                                    <div class="label-flex">
+                                        <div class="label la-top">
+                                            <div class="bar ard color3"></div>
+                                            <span class="traffic-info">今日已用</span>
+                                            <code class="card-tag tag-red">{$user->TodayusedTraffic()}</code>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="progressbar">
+                                    <div class="before"></div>
+                                    <div class="bar ard color2"
+                                         style="width:calc({($user->transfer_enable==0)?0:$user->last_day_t/$user->transfer_enable*100}%);">
+                                        <span></span>
+                                    </div>
+                                    <div class="label-flex">
+                                        <div class="label la-top">
+                                            <div class="bar ard color2"><span></span></div>
+                                            <span class="traffic-info">过去已用</span>
+                                            <code class="card-tag tag-orange">{$user->LastusedTraffic()}</code>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="progressbar">
+                                    <div class="before"></div>
+                                    <div class="bar remain color"
+                                         style="width:calc({($user->transfer_enable==0)?0:($user->transfer_enable-($user->u+$user->d))/$user->transfer_enable*100}%);">
+                                        <span></span>
+                                    </div>
+                                    <div class="label-flex">
+                                        <div class="label la-top">
+                                            <div class="bar ard color"><span></span></div>
+                                            <span class="traffic-info">剩余流量</span>
+                                            <code class="card-tag tag-green" id="remain">{$user->unusedTraffic()}</code>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-main">
+                            <div class="card-inner margin-bottom-no">
+                                <p class="card-heading"><i class="icon icon-md">account_circle</i>账号使用情况</p>
+                                <dl class="dl-horizontal">
+
+
+                                    <dt>等级过期时间</dt>
+                                    {if $user->class_expire!="1989-06-04 00:05:00"}
+                                    <dd><i class="icon icon-md">event</i>&nbsp;{$user->class_expire}</dd>
+                                    {else}
+                                    <dd><i class="icon icon-md">event</i>&nbsp;不过期</dd>
+                                    {/if}
+
+                                    <dt>等级有效期</dt>
+                                    <i class="icon icon-md">event</i>
+                                    <span class="label-level-expire">剩余</span>
+                                    <code><span id="days-level-expire"></span></code>
+                                    <span class="label-level-expire">天</span>
+
+                                    <dt>帐号过期时间</dt>
+                                    <dd><i class="icon icon-md">event</i>&nbsp;{$user->expire_in}</dd>
+
+                                    <dt>账号有效期</dt>
+                                    <i class="icon icon-md">event</i>
+                                    <span class="label-account-expire">剩余</span>
+                                    <code><span id="days-account-expire"></span></code>
+                                    <span class="label-account-expire">天</span>
+
+                                    <dt>上次使用</dt>
+                                    {if $user->lastSsTime()!="从未使用喵"}
+                                    <dd><i class="icon icon-md">event</i>&nbsp;{$user->lastSsTime()}</dd>
+                                    {else}
+                                    <dd><i class="icon icon-md">event</i>&nbsp;从未使用</dd>
+                                    {/if}
+
+                                    <dt>上次签到时间：</dt>
+                                    <dd><i class="icon icon-md">event</i>&nbsp;{$user->lastCheckInTime()}</dd>
+
+                                    <p id="checkin-msg"></p>
+
+                                    {if $geetest_html != null}
+                                        <div id="popup-captcha"></div>
+                                    {/if}
+                                    {if $recaptcha_sitekey != null && $user->isAbleToCheckin()}
+                                        <div class="g-recaptcha" data-sitekey="{$recaptcha_sitekey}"></div>
+                                    {/if}
+
+
+                                    <div class="card-action">
+                                        <div class="usercheck pull-left">
+                                            {if $user->isAbleToCheckin() }
+                                                <div id="checkin-btn">
+                                                    <button id="checkin" class="btn btn-brand btn-flat"><span
+                                                                class="icon">check</span>&nbsp;点我签到&nbsp;
+                                                        <div><span class="icon">screen_rotation</span>&nbsp;或者摇动手机签到
+                                                        </div>
+                                                    </button>
+                                                </div>
+                                            {else}
+                                                <p><a class="btn btn-brand disabled btn-flat" href="#"><span
+                                                                class="icon">check</span>&nbsp;今日已签到</a></p>
+                                            {/if}
+                                        </div>
+                                    </div>
+                                </dl>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -1065,184 +1238,6 @@
 
                 </div>
 
-                <div class="col-xx-12 col-sm-4">
-
-                    <div class="card">
-                        <div class="card-main">
-                            <div class="card-inner margin-bottom-no">
-                                <p class="card-heading"><i class="icon icon-md">account_circle</i>账号使用情况</p>
-                                <dl class="dl-horizontal">
-
-
-                                    <p>
-                                        <dt>等级过期时间</dt>
-                                        {if $user->class_expire!="1989-06-04 00:05:00"}
-                                    <dd><i class="icon icon-md">event</i>&nbsp;{$user->class_expire}</dd>
-                                    {else}
-                                    <dd><i class="icon icon-md">event</i>&nbsp;不过期</dd>
-                                    {/if}
-                                    </p>
-                                    <p>
-                                        <dt>等级有效期</dt>
-                                        <i class="icon icon-md">event</i>
-                                        <span class="label-level-expire">剩余</span>
-                                        <code><span id="days-level-expire"></span></code>
-                                        <span class="label-level-expire">天</span>
-                                    </p>
-
-                                    <p>
-                                        <dt>帐号过期时间</dt>
-                                    <dd><i class="icon icon-md">event</i>&nbsp;{$user->expire_in}</dd>
-                                    </p>
-                                    <p>
-                                        <dt>账号有效期</dt>
-                                        <i class="icon icon-md">event</i>
-                                        <span class="label-account-expire">剩余</span>
-                                        <code><span id="days-account-expire"></span></code>
-                                        <span class="label-account-expire">天</span>
-                                    </p>
-
-                                    <p>
-                                        <dt>上次使用</dt>
-                                        {if $user->lastSsTime()!="从未使用喵"}
-                                    <dd><i class="icon icon-md">event</i>&nbsp;{$user->lastSsTime()}</dd>
-                                    {else}
-                                    <dd><i class="icon icon-md">event</i>&nbsp;从未使用</dd>
-                                    {/if}</p>
-                                    <p>
-                                        <dt>上次签到时间：</dt>
-                                    <dd><i class="icon icon-md">event</i>&nbsp;{$user->lastCheckInTime()}</dd>
-                                    </p>
-
-
-                                    <p id="checkin-msg"></p>
-
-                                    {if $geetest_html != null}
-                                        <div id="popup-captcha"></div>
-                                    {/if}
-                                    {if $recaptcha_sitekey != null && $user->isAbleToCheckin()}
-                                        <div class="g-recaptcha" data-sitekey="{$recaptcha_sitekey}"></div>
-                                    {/if}
-
-
-                                    <div class="card-action">
-                                        <div class="usercheck pull-left">
-                                            {if $user->isAbleToCheckin() }
-                                                <div id="checkin-btn">
-                                                    <button id="checkin" class="btn btn-brand btn-flat"><span
-                                                                class="icon">check</span>&nbsp;点我签到&nbsp;
-                                                        <div><span class="icon">screen_rotation</span>&nbsp;或者摇动手机签到
-                                                        </div>
-                                                    </button>
-                                                </div>
-                                            {else}
-                                                <p><a class="btn btn-brand disabled btn-flat" href="#"><span
-                                                                class="icon">check</span>&nbsp;今日已签到</a></p>
-                                            {/if}
-                                        </div>
-                                    </div>
-                                </dl>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-main">
-                            <div class="card-inner">
-
-                                {*<div id="traffic_chart" style="height: 300px; width: 100%;"></div>
-
-                               <script src="/assets/js/canvasjs.min.js"> </script>
-                                <script type="text/javascript">
-                                    var chart = new CanvasJS.Chart("traffic_chart", {
-                                        theme: "light1",
-                                        title: {
-                                            text: "流量使用情况",
-                                            fontFamily: "Impact",
-                                            fontWeight: "normal"
-                                        },
-                                        legend: {
-                                            verticalAlign: "bottom",
-                                            horizontalAlign: "center"
-                                        },
-                                        data: [{
-                                            startAngle: -15,
-                                            indexLabelFontSize: 20,
-                                            indexLabelFontFamily: "Garamond",
-                                            indexLabelFontColor: "darkgrey",
-                                            indexLabelLineColor: "darkgrey",
-                                            indexLabelPlacement: "outside",
-                                            yValueFormatString: "##0.00\"%\"",
-                                            type: "pie",
-                                            showInLegend: true,
-                                            dataPoints: [
-                                                {if $user->transfer_enable != 0}
-                                                {
-                                                    y: {$user->last_day_t/$user->transfer_enable*100},label: "过去已用", legendText:"过去已用 {number_format($user->last_day_t/$user->transfer_enable*100,2)}% {$user->LastusedTraffic()}", indexLabel: "过去已用 {number_format($user->last_day_t/$user->transfer_enable*100,2)}% {$user->LastusedTraffic()}"
-                                                },
-                                                {
-                                                    y: {($user->u+$user->d-$user->last_day_t)/$user->transfer_enable*100},label: "今日已用", legendText:"今日已用 {number_format(($user->u+$user->d-$user->last_day_t)/$user->transfer_enable*100,2)}% {$user->TodayusedTraffic()}", indexLabel: "今日已用 {number_format(($user->u+$user->d-$user->last_day_t)/$user->transfer_enable*100,2)}% {$user->TodayusedTraffic()}"
-                                                },
-                                                {
-                                                    y: {($user->transfer_enable-($user->u+$user->d))/$user->transfer_enable*100},label: "剩余可用", legendText:"剩余可用 {number_format(($user->transfer_enable-($user->u+$user->d))/$user->transfer_enable*100,2)}% {$user->unusedTraffic()}", indexLabel: "剩余可用 {number_format(($user->transfer_enable-($user->u+$user->d))/$user->transfer_enable*100,2)}% {$user->unusedTraffic()}"
-                                                }
-                                                {/if}
-                                            ]
-                                        }
-                                        ]
-                                    });
-
-                                    chart.render();
-                                </script> *}
-
-                                <div class="progressbar">
-                                    <div class="before"></div>
-                                    <div class="bar tuse color3"
-                                         style="width:calc({($user->transfer_enable==0)?0:($user->u+$user->d-$user->last_day_t)/$user->transfer_enable*100}%);"></div>
-                                    <div class="label-flex">
-                                        <div class="label la-top">
-                                            <div class="bar ard color3"></div>
-                                            <span class="traffic-info">今日已用</span>
-                                            <code class="card-tag tag-red">{$user->TodayusedTraffic()}</code>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="progressbar">
-                                    <div class="before"></div>
-                                    <div class="bar ard color2"
-                                         style="width:calc({($user->transfer_enable==0)?0:$user->last_day_t/$user->transfer_enable*100}%);">
-                                        <span></span>
-                                    </div>
-                                    <div class="label-flex">
-                                        <div class="label la-top">
-                                            <div class="bar ard color2"><span></span></div>
-                                            <span class="traffic-info">过去已用</span><code
-                                                    class="card-tag tag-orange">{$user->LastusedTraffic()}</code>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="progressbar">
-                                    <div class="before"></div>
-                                    <div class="bar remain color"
-                                         style="width:calc({($user->transfer_enable==0)?0:($user->transfer_enable-($user->u+$user->d))/$user->transfer_enable*100}%);">
-                                        <span></span>
-                                    </div>
-                                    <div class="label-flex">
-                                        <div class="label la-top">
-                                            <div class="bar ard color"><span></span></div>
-                                            <span class="traffic-info">剩余流量</span>
-                                            <code class="card-tag tag-green" id="remain">{$user->unusedTraffic()}</code>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                        </div>
-                    </div>
-
-                </div>
             </div>
             {include file='dialog.tpl'}
 
@@ -1330,7 +1325,7 @@
 
     $(".copy-text").click(function () {
         $("#result").modal();
-        $$.getElementById('msg').innerHTML = '已拷贝订阅链接，请您继续接下来的操作';
+        $$.getElementById('msg').innerHTML = '已复制，请您继续接下来的操作';
     });
 
     $(function () {
