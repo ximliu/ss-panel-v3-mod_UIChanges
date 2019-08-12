@@ -142,54 +142,6 @@
                     <div class="card">
                         <div class="card-main">
                             <div class="card-inner">
-
-                                {*
-                                <div id="traffic_chart" style="height: 300px; width: 100%;"></div>
-
-                                <script src="/assets/js/canvasjs.min.js"> </script>
-                                <script type="text/javascript">
-                                    var chart = new CanvasJS.Chart("traffic_chart", {
-                                        theme: "light1",
-                                        title: {
-                                            text: "流量使用情况",
-                                            fontFamily: "Impact",
-                                            fontWeight: "normal"
-                                        },
-                                        legend: {
-                                            verticalAlign: "bottom",
-                                            horizontalAlign: "center"
-                                        },
-                                        data: [{
-                                            startAngle: -15,
-                                            indexLabelFontSize: 20,
-                                            indexLabelFontFamily: "Garamond",
-                                            indexLabelFontColor: "darkgrey",
-                                            indexLabelLineColor: "darkgrey",
-                                            indexLabelPlacement: "outside",
-                                            yValueFormatString: "##0.00\"%\"",
-                                            type: "pie",
-                                            showInLegend: true,
-                                            dataPoints: [
-                                                {if $user->transfer_enable != 0}
-                                                {
-                                                    y: {$user->last_day_t/$user->transfer_enable*100},label: "过去已用", legendText:"过去已用 {number_format($user->last_day_t/$user->transfer_enable*100,2)}% {$user->LastusedTraffic()}", indexLabel: "过去已用 {number_format($user->last_day_t/$user->transfer_enable*100,2)}% {$user->LastusedTraffic()}"
-                                                },
-                                                {
-                                                    y: {($user->u+$user->d-$user->last_day_t)/$user->transfer_enable*100},label: "今日已用", legendText:"今日已用 {number_format(($user->u+$user->d-$user->last_day_t)/$user->transfer_enable*100,2)}% {$user->TodayusedTraffic()}", indexLabel: "今日已用 {number_format(($user->u+$user->d-$user->last_day_t)/$user->transfer_enable*100,2)}% {$user->TodayusedTraffic()}"
-                                                },
-                                                {
-                                                    y: {($user->transfer_enable-($user->u+$user->d))/$user->transfer_enable*100},label: "剩余可用", legendText:"剩余可用 {number_format(($user->transfer_enable-($user->u+$user->d))/$user->transfer_enable*100,2)}% {$user->unusedTraffic()}", indexLabel: "剩余可用 {number_format(($user->transfer_enable-($user->u+$user->d))/$user->transfer_enable*100,2)}% {$user->unusedTraffic()}"
-                                                }
-                                                {/if}
-                                            ]
-                                        }
-                                        ]
-                                    });
-
-                                    chart.render();
-                                </script>
-                                *}
-
                                 <div class="progressbar">
                                     <div class="before"></div>
                                     <div class="bar tuse color3"
@@ -241,7 +193,6 @@
                             <div class="card-inner margin-bottom-no">
                                 <p class="card-heading"><i class="icon icon-md">account_circle</i>账号使用情况</p>
                                 <dl class="dl-horizontal">
-
 
                                     <dt>等级过期时间</dt>
                                     {if $user->class_expire!="1989-06-04 00:05:00"}
@@ -335,15 +286,61 @@
                         </div>
                     </div>
 
+                    <div class="card">
+                        <div class="card-main">
+                            <div class="card-inner margin-bottom-no">
+                                <div class="card-heading"><i class="icon icon-md">phonelink</i> 客户端下载</div>
+
+                                <nav class="tab-nav margin-top-no">
+                                    <ul class="nav nav-list">
+                                        <li {if $ssr_prefer}class="active"{/if}>
+                                            <a class="" data-toggle="tab" href="#all_ssr_client"><i class="icon icon-lg">airplanemode_active</i>&nbsp;SSR</a>
+                                        </li>
+                                        <li {if !$ssr_prefer}class="active"{/if}>
+                                            <a class="" data-toggle="tab" href="#all_ss_client"><i class="icon icon-lg">flight_takeoff</i>&nbsp;SS/SSD</a>
+                                        </li>
+                                        <li>
+                                            <a class="" data-toggle="tab" href="#all_v2ray_client"><i class="icon icon-lg">flight_land</i>&nbsp;V2RAY</a>
+                                        </li>
+                                    </ul>
+                                </nav>
+                                <div class="card-inner">
+                                    <div class="tab-content">
+                                        <div class="tab-pane fade {if $ssr_prefer}active in{/if}" id="all_ssr_client">
+                                            <p><i class="icon icon-lg">laptop_windows</i> Windows：下载 <a href="/ssr-download/ssr-win.7z" target="_blank">ShadowsocksRR Windows</a> 或 <a href="/ssr-download/SSTap.7z" target="_blank">SSTap</a></p>
+                                            <p><i class="icon icon-lg">laptop_mac</i> macOS：<a href="/ssr-download/ssr-mac.dmg" target="_blank">下载 ShadowsocksX-NG-R8</a></p>
+                                            <p><i class="icon icon-lg">laptop_windows</i> Linux（GUI）：<a href="/ssr-download/ssr-linux.AppImage" target="_blank">下载 Electron SSR</a></p>
+                                            <p><i class="icon icon-lg">android</i> Android：下载 <a href="/ssr-download/ssrr-android.apk">SSRR</a> 或 <a href="/ssr-download/ssr-android.apk">SSR</a></p>
+                                            <p><i class="icon icon-lg">phone_iphone</i> iOS：可以使用 Shadowrocket、Quantumult、Potatso 或 Potatso Lite</p>
+                                            <p><i class="icon icon-lg">router</i> Koolshare 固件路由器/软路由：前往 <a href="https://github.com/hq450/fancyss_history_package" target="_blank">FancySS 下载页面</a> 下载 koolss 插件</p>
+                                        </div>
+                                        <div class="tab-pane fade {if !$ssr_prefer}active in{/if}" id="all_ss_client">
+                                            <p><i class="icon icon-lg">laptop_windows</i> Windows：下载 <a href="/ssr-download/ssd-win.7z" target="_blank">SSD Windows</a>，<a href="/ssr-download/ss-win.zip" target="_blank">Shadowsocks Windows</a> 或 <a href="/ssr-download/SSTap.7z" target="_blank">SSTap</a></p>
+                                            <p><i class="icon icon-lg">laptop_mac</i> macOS：<a href="/ssr-download/ss-mac.zip" target="_blank">下载 ShadowsocksX-NG</a></p>
+                                            <p><i class="icon icon-lg">laptop_windows</i> Linux（GUI）：<a href="/ssr-download/ssr-linux.AppImage" target="_blank">下载 Electron SSR</a></p>
+                                            <p><i class="icon icon-lg">android</i> Android：下载 <a href="/ssr-download/ss-android.apk">Shadowsocks Android</a> 或 <a href="/ssr-download/ssd-android.apk">SSD Android</a></p>
+                                            <p><i class="icon icon-lg">phone_iphone</i> iOS：可以使用 Shadowrocket、Quantumult、Potatso 或 Potatso Lite</p>
+                                            <p><i class="icon icon-lg">router</i> Koolshare 固件路由器/软路由：前往 <a href="https://github.com/hq450/fancyss_history_package" target="_blank">FancySS 下载页面</a></p>
+                                        </div>
+                                        <div class="tab-pane fade" id="all_v2ray_client">
+                                            <p><i class="icon icon-lg">laptop_windows</i> Windows：下载 <a href="/ssr-download/v2rayn.zip" target="_blank">V2RayN</a></p>
+                                            <p><i class="icon icon-lg">laptop_mac</i> macOS：请前往 <a href="https://github.com/yanue/V2rayU">V2RayU 页面</a> 下载</p>
+                                            <p><i class="icon icon-lg">android</i> Android：下载 <a href="/ssr-download/ss-android.apk">V2RayNG</a></p>
+                                            <p><i class="icon icon-lg">phone_iphone</i> iOS：可以使用 Shadowrocket</p>
+                                            <p><i class="icon icon-lg">router</i> Koolshare 固件路由器/软路由：前往 <a href="https://github.com/hq450/fancyss_history_package/tree/master/fancyss_X64" target="_blank">FancySS 历史下载页面</a> 下载 v2ray 插件</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="card quickadd">
                         <div class="card-main">
-                            <div class="card-inner margin-bottom-no">
+                            <div class="card-inner">
                                 <div class="cardbtn-edit">
                                     <div class="card-heading"><i class="icon icon-md">phonelink</i> 快速添加节点</div>
-                                    <div class="reset-flex"><span>重置订阅链接</span><a
-                                                class="reset-link btn btn-brand-accent btn-flat"><i class="icon">autorenew</i>&nbsp;</a>
-                                    </div>
+                                    <div class="reset-flex"><span>重置订阅链接</span><a class="reset-link btn btn-brand-accent btn-flat"><i class="icon">autorenew</i>&nbsp;</a></div>
                                 </div>
                                 <nav class="tab-nav margin-top-no">
                                     <ul class="nav nav-list">
@@ -359,7 +356,7 @@
                                         </li>
                                     </ul>
                                 </nav>
-                                <div class="card-inner">
+                                <div>
                                     <div class="tab-content">
                                         <div class="tab-pane fade {if $ssr_prefer}active in{/if}" id="all_ssr">
                                             {$pre_user = URL::cloneUser($user)}
@@ -413,9 +410,7 @@
                                                 {$user = URL::getSSRConnectInfo($pre_user)}
                                                 {$ssr_url_all = URL::getAllUrl($pre_user, 0, 0)}
                                                 {$ssr_url_all_mu = URL::getAllUrl($pre_user, 1, 0)}
-                                                <p><span class="icon icon-lg text-white">filter_1</span><a
-                                                            class="btn-dl" href="/ssr-download/ssr-win.7z"><i
-                                                                class="material-icons">save_alt</i> 点击下载SSRR</a>解压至任意磁盘并运行
+                                                <p><span class="icon icon-lg text-white">filter_1</span>将下载的 SSR 或 SSRR 解压至任意磁盘并运行
                                                 </p>
                                                 <p><span class="icon icon-lg text-white">filter_2</span>
                                                     任务栏右下角右键纸飞机图标->服务器订阅->SSR服务器订阅设置，将订阅链接设置为下面的地址，确定之后再更新SSR服务器订阅（绕过代理）
@@ -469,14 +464,9 @@
                                                 <p><a href="/user/tutorial">点击这里查看Windows教程</a></p>
                                             </div>
                                             <div class="tab-pane fade" id="all_ssr_mac">
-                                                <p><span class="icon icon-lg text-white">filter_1</span>
-                                                    <a href="/ssr-download/ssr-mac.dmg" class="btn-dl"><i
-                                                                class="material-icons">save_alt</i>
-                                                        点击下载ShadowsocksX-NG-R8</a>，安装并启动</p>
-                                                <p><span class="icon icon-lg text-white">filter_2</span>右击托盘纸飞机图标->服务器->服务器订阅，填入以下订阅地址
-                                                </p>
-                                                <p><span class="icon icon-lg text-white">filter_3</span>更新订阅成功后服务器列表即可出现节点，选择一个节点
-                                                </p>
+                                                <p><span class="icon icon-lg text-white">filter_1</span>安装 ShadowsocksX-NG-R8 并启动</p>
+                                                <p><span class="icon icon-lg text-white">filter_2</span>右击托盘纸飞机图标->服务器->服务器订阅，填入以下订阅地址</p>
+                                                <p><span class="icon icon-lg text-white">filter_3</span>更新订阅成功后服务器列表即可出现节点，选择一个节点</p>
                                                 <p><span class="icon icon-lg text-white">filter_4</span>
                                                     再次右击托盘纸飞机图标，如果shadowsocks还未打开，则需要点击打开</p>
                                                 <div>
@@ -517,10 +507,7 @@
                                                 <p><a href="/user/tutorial">点击这里查看Mac教程</a></p>
                                             </div>
                                             <div class="tab-pane fade" id="all_ssr_linux">
-                                                <p><span class="icon icon-lg text-white">filter_1</span>自行安装python，<a
-                                                            href="/ssr-download/ssr-linux.AppImage" class="btn-dl"><i
-                                                                class="material-icons">save_alt</i> 点击下载electron-ssr</a>，安装并启动
-                                                </p>
+                                                <p><span class="icon icon-lg text-white">filter_1</span>自行安装python，下载 electron-ssr 安装并启动</p>
                                                 <p><span class="icon icon-lg text-white">filter_2</span>
                                                     右击托盘纸飞机图标->服务器->订阅管理，点击“添加”，输入以下订阅地址并回车</p>
                                                 <p><span class="icon icon-lg text-white">filter_3</span>订阅成功后点击“完成”关闭界面，右击托盘纸飞机图标->服务器->{$config["appName"]}
@@ -675,11 +662,7 @@
                                                 <!-- <p><a href="/user/tutorial">点击这里查看iOS教程</a></p> -->
                                             </div>
                                             <div class="tab-pane fade" id="all_ssr_android">
-                                                <p><span class="icon icon-lg text-white">filter_1</span>点击下载<a
-                                                            href="/ssr-download/ssr-android.apk" class="btn-dl"><i
-                                                                class="material-icons">save_alt</i> SSR </a> 或 <a
-                                                            href="/ssr-download/ssrr-android.apk" class="btn-dl"><i
-                                                                class="material-icons">save_alt</i> SSRR </a> 并安装</p>
+                                                <p><span class="icon icon-lg text-white">filter_1</span>安装 SSR 或 SSRR</p>
                                                 <p><span class="icon icon-lg text-white">filter_2</span>
                                                     打开App，点击右下角的<span class="icon icon-lg text-white">add</span>号图标</p>
                                                 <p><span class="icon icon-lg text-white">filter_3</span> 添加/升级 SSR订阅</p>
@@ -738,10 +721,7 @@
                                             </div>
                                             <div class="tab-pane fade" id="all_ssr_router">
                                                 <p>梅林：</p>
-                                                <p><span class="icon icon-lg text-white">filter_1</span><a
-                                                            href="https://github.com/hq450/fancyss_history_package"
-                                                            class="btn-dl"><i class="material-icons">save_alt</i> 进入下载页面
-                                                    </a> 下载“科学上网”插件</p>
+                                                <p><span class="icon icon-lg text-white">filter_1</span>下载并安装“科学上网”插件</p>
                                                 <p><span class="icon icon-lg text-white">filter_2</span>
                                                     进入路由器管理页面->系统管理->勾选“Format JFFS partition at next boot”和“Enable JFFS
                                                     custom scripts and configs”->应用本页面设置，重启路由器</p>
@@ -794,9 +774,7 @@
                                                 {/if}
                                             </div>
                                             <div class="tab-pane fade" id="all_ssr_game">
-                                                <p><span class="icon icon-lg text-white">filter_1</span><a
-                                                            href="/ssr-download/SSTap.7z" class="btn-dl"><i
-                                                                class="material-icons">save_alt</i> 点击下载SSTap</a>，并安装
+                                                <p><span class="icon icon-lg text-white">filter_1</span>安装 SSTap
                                                 </p>
                                                 <p><span class="icon icon-lg text-white">filter_2</span>
                                                     期间会安装虚拟网卡，请点击允许或确认</p>
@@ -849,35 +827,72 @@
                                                 {$ssr_url_all = URL::getAllUrl($pre_user, 0, 0)}
                                                 {$ssr_url_all_mu = URL::getAllUrl($pre_user, 1, 0)}
                                                 {if URL::SSRCanConnect($user)}
-                                                    <dl class="dl-horizontal">
-                                                        <p>
-                                                            <dt><code>优先导入普通端口，如果普通端口无法使用再导入单端口</code></dt>
-                                                        </p>
-                                                        <p>
-                                                            <dt>端口</dt>
-                                                        <dd>{$user->port}</dd>
-                                                        </p>
-                                                        <p>
-                                                            <dt>密码</dt>
-                                                        <dd>{$user->passwd}</dd>
-                                                        </p>
-                                                        <p>
-                                                            <dt>自定义加密</dt>
-                                                        <dd>{$user->method}</dd>
-                                                        </p>
-                                                        <p>
-                                                            <dt>自定义协议</dt>
-                                                        <dd>{$user->protocol}</dd>
-                                                        </p>
-                                                        <p>
-                                                            <dt>自定义混淆</dt>
-                                                        <dd>{$user->obfs}</dd>
-                                                        </p>
-                                                        <p>
-                                                            <dt>自定义混淆参数</dt>
-                                                        <dd>{$user->obfs_param}</dd>
-                                                        </p>
-                                                    </dl>
+                                                <table class="table">
+                                                    <tbody>
+                                                        <tr>
+                                                            <td>端口</td>
+                                                            <td>{$user->port}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>密码</td>
+                                                            <td>{$user->passwd}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>自定义加密</td>
+                                                            <td>{$user->method}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>自定义协议</td>
+                                                            <td>{$user->protocol}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>自定义混淆</td>
+                                                            <td>{$user->obfs}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>自定义混淆参数</td>
+                                                            <td>{$user->obfs_param}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+
+                                                <br>
+
+                                                {if $mergeSub!='true'}
+                                                <div>
+                                                    <span class="icon icon-lg text-white">flash_auto</span> 普通节点订阅地址：
+                                                </div>
+                                                <div class="float-clear">
+                                                    <input type="text" class="input form-control form-control-monospace cust-link col-xx-12 col-sm-8 col-lg-7" name="input1" value="{$subUrl}{$ssr_sub_token}?mu=0" readonly="true">
+                                                    <button class="copy-text btn btn-subscription col-xx-12 col-sm-3 col-lg-2" type="button" data-clipboard-text="{$subUrl}{$ssr_sub_token}?mu=0">点击复制</button>
+                                                </div>
+                                                <br>
+                                                <div>
+                                                    <span class="icon icon-lg text-white">flash_auto</span> 单端口节点订阅地址：
+                                                </div>
+                                                <div class="float-clear">
+                                                    <input type="text" class="input form-control form-control-monospace cust-link col-xx-12 col-sm-8 col-lg-7" name="input1" value="{$subUrl}{$ssr_sub_token}?mu=1" readonly="true">
+                                                    <button class="copy-text btn btn-subscription col-xx-12 col-sm-3 col-lg-2" type="button" data-clipboard-text="{$subUrl}{$ssr_sub_token}?mu=1">点击复制</button>
+                                                </div>
+                                                {else}
+                                                <div>
+                                                    <span class="icon icon-lg text-white">flash_auto</span> 订阅地址：
+                                                </div>
+                                                <div class="float-clear">
+                                                    <input type="text" class="input form-control form-control-monospace cust-link col-xx-12 col-sm-8 col-lg-7" name="input1" value="{$subUrl}{$ssr_sub_token}" readonly="true">
+                                                    <button class="copy-text btn btn-subscription col-xx-12 col-sm-3 col-lg-2" type="button" data-clipboard-text="{$subUrl}{$ssr_sub_token}">点击复制</button>
+                                                </div>
+                                                {/if}
+
+                                                <br>
+
+                                                    {if $mergeSub!='true'}
+                                                        <button class="copy-text btn btn-subscription" type="button" data-clipboard-text="{$ssr_url_all}">点击复制 SSR 普通端口节点链接</button>
+                                                        <button class="copy-text btn btn-subscription" type="button" data-clipboard-text="{$ssr_url_all_mu}">点击复制 SSR 单端口多用户链接</button>
+                                                    {else}
+                                                        <button class="copy-text btn btn-subscription" type="button" data-clipboard-text="{$ssr_url_all}">点击复制全部 SSR 节点链接</button>
+                                                    {/if}
+
                                                 {else}
                                                     <p>您好，您目前的 加密方式，混淆，或者协议设置在 ShadowsocksR 客户端下无法连接。请您选用 Shadowsocks
                                                         客户端来连接，或者到 资料编辑 页面修改后再来查看此处</p>
@@ -929,32 +944,46 @@
                                                 {$ssd_url_all =URL::getAllSSDUrl($user)}
 
                                                 {if URL::SSCanConnect($user)}
-                                                    <dl class="dl-horizontal">
-                                                        <p>各个节点的地址请到节点列表查看！</p>
-                                                        <p>
-                                                            <dt>端口</dt>
-                                                        <dd>{$user->port}</dd>
-                                                        </p>
-                                                        <p>
-                                                            <dt>密码</dt>
-                                                        <dd>{$user->passwd}</dd>
-                                                        </p>
-                                                        <p>
-                                                            <dt>自定义加密</dt>
-                                                        <dd>{$user->method}</dd>
-                                                        </p>
-                                                        <p>
-                                                            <dt>自定义混淆</dt>
-                                                        <dd>{$user->obfs}</dd>
-                                                        </p>
-                                                        <p>
-                                                            <dt>自定义混淆参数</dt>
-                                                        <dd>{$user->obfs_param}</dd>
-                                                        </p>
-                                                    </dl>
+                                                <table class="table">
+                                                    <tbody>
+                                                        <tr>
+                                                            <td>端口</td>
+                                                            <td>{$user->port}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>密码</td>
+                                                            <td>{$user->passwd}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>自定义加密</td>
+                                                            <td>{$user->method}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>自定义混淆</td>
+                                                            <td>{$user->obfs}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>自定义混淆参数</td>
+                                                            <td>{$user->obfs_param}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                                <br>
+                                                <div>
+                                                    <span class="icon icon-lg text-white">flash_auto</span> SSD 节点订阅地址
+                                                </div>
+                                                <div class="float-clear">
+                                                    <input type="text" class="input form-control form-control-monospace cust-link col-xx-12 col-sm-8 col-lg-7" name="input1" readonly value="{$subUrl}{$ssr_sub_token}?mu=3" readonly="true">
+                                                    <button class="copy-text btn btn-subscription col-xx-12 col-sm-3 col-lg-2" type="button" data-clipboard-text="{$subUrl}{$ssr_sub_token}?mu=3">点击复制
+                                                    </button>
+                                                </div>
+
+                                                <br>
+                                                <button class="copy-text btn btn-subscription" type="button" data-clipboard-text="{$ssd_url_all}">点击复制全部 SSD 节点链接</button>
+                                                <button class="copy-text btn btn-subscription" type="button" data-clipboard-text="{$ss_url_all}">点击复制全部 SS 节点链接</button>
+                                                
                                                 {else}
-                                                    <p>您好，您目前的 加密方式，混淆，或者协议设置在 SS 客户端下无法连接。请您选用 SSR 客户端来连接，或者到 资料编辑
-                                                        页面修改后再来查看此处</p>
+                                                    <p>您好，您目前的 加密方式，混淆，或者协议设置在 SS 客户端下无法连接。请您选用 SSR 客户端来连接，或者到 资料编辑 页面修改后再来查看此处</p>
                                                     <p>同时, Shadowsocks 单端口多用户的连接不受您设置的影响,您可以在此使用相应的客户端进行连接~</p>
                                                 {/if}
                                             </div>
