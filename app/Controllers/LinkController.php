@@ -164,7 +164,7 @@ class LinkController extends BaseController
             $getBody = self::getBody(
                 $user,
                 $response,
-                self::getKitsunebi($user),
+                self::getKitsunebi($user, $opts),
                 'Kitsunebi.txt'
             );
         } elseif ($shadowrocket == 1) {
@@ -462,7 +462,7 @@ class LinkController extends BaseController
         $ss_group = '';
         $items = array_merge(URL::getAllItems($user, 0, 1, 0), URL::getAllItems($user, 1, 1, 0));
         foreach ($items as $item) {
-            $ss_group .= $item['remark'] . ' = ss, ' . $item['address'] . ', ' . $item['port'] . ', ' . $item['method'] . ', ' . $item['passwd'] . URL::getSurgeObfs($item) . PHP_EOL;
+            $ss_group .= ($item['remark'] . ' = custom, ' . $item['address'] . ', ' . $item['port'] . ', ' . $item['method'] . ', ' . $item['passwd'] . ', https://raw.githubusercontent.com/lhie1/Rules/master/SSEncrypt.module' . URL::getSurgeObfs($item) . PHP_EOL);
             $ss_name .= ', ' . $item['remark'];
         }
         $render = ConfRender::getTemplateRender();
@@ -646,7 +646,7 @@ class LinkController extends BaseController
             } else {
                 $tmp = '剩余流量：' . $user->unusedTraffic();
             }
-            $tmp .= '...过期时间：';
+            $tmp .= '.♥.过期时间：';
             if ($user->class_expire != '1989-06-04 00:05:00') {
                 $userClassExpire = explode(' ', $user->class_expire);
                 $tmp .= $userClassExpire[0];
@@ -711,20 +711,8 @@ class LinkController extends BaseController
                 ) . '?v2ray-plugin=' . Tools::base64_url_encode(
                     json_encode($v2rayplugin)
                 ) . '#' . rawurlencode($item['remark']) . PHP_EOL);
-            } elseif (in_array($item['obfs'], ['simple_obfs_http', 'simple_obfs_tls'])) {
-                $obfs = ($item['method'] == 'simple_obfs_http'
-                    ? 'obfs=http;'
-                    : 'obfs=tls;');
-                $obfs .= ($item['obfs_param'] != ''
-                    ? ('obfs-host=' . $item['obfs_param'] . ';')
-                    : 'obfs-host=windowsupdate.windows.com;');
-                $return .= ('ss://' . Tools::base64_url_encode(
-                    $item['method'] . ':' . $item['passwd']
-                ) . '@' . $item['address'] . ':' . $item['port'] .
-                    '?plugin=simple-obfs;' . $obfs .
-                    'obfs-uri=/#' . rawurlencode(
-                        Config::get('appName') . ' - ' . $item['remark']
-                    ) . PHP_EOL);
+            } elseif (in_array($item['obfs'], Config::getSupportParam('ss_obfs'))) {
+                $return .= (URL::getItemUrl($item, 1) . PHP_EOL);
             } elseif ($item['obfs'] == 'plain') {
                 $return .= (URL::getItemUrl($item, 2) . PHP_EOL);
             }
@@ -742,7 +730,7 @@ class LinkController extends BaseController
      *
      * @return string
      */
-    public static function getKitsunebi($user)
+    public static function getKitsunebi($user, $opts)
     {
         $return = '';
         // v2ray
@@ -786,6 +774,10 @@ class LinkController extends BaseController
             }
         }
 
+        // 账户到期时间以及流量信息
+        $extend = isset($opts['extend']) ? (int) $opts['extend'] : 0;
+        $return .= $extend == 0 ? '' : URL::getUserTraffic($user, 2) . PHP_EOL;
+
         return base64_encode($return);
     }
 
@@ -803,6 +795,13 @@ class LinkController extends BaseController
         $extend = isset($opts['extend']) ? $opts['extend'] : 0;
         $getV2rayPlugin = 1;
         $return_url = '';
+        
+        // Quantumult 则不显示账户到期以及流量信息
+        if (strpos($_SERVER['HTTP_USER_AGENT'], 'Quantumult') !== false) {
+            $extend = 0;
+        }
+
+        // 如果是 Kitsunebi 不输出 SS V2rayPlugin 节点
         if (strpos($_SERVER['HTTP_USER_AGENT'], 'Kitsunebi') !== false) {
             $getV2rayPlugin = 0;
         }
