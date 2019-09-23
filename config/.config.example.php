@@ -125,7 +125,8 @@ $System_Config['user_agreement_scheme'] = [
     ['id'=>3,'name'=>'SS/SSR 兼容配置','method'=>'chacha20-ietf','protocol'=>'auth_aes128_sha1_compatible','obfs'=>'plain']
 ];
 
-$System_Config['subscribeLog'] = 'false';			//是否记录用户订阅日志
+$System_Config['subscribeLog'] = 'false';			    //是否记录用户订阅日志
+$System_Config['subscribeLog_keep_days'] = '7';		    //订阅记录保留天数
 
 //Bot 设置--------------------------------------------------------------------------------------------
 #通用
@@ -294,6 +295,8 @@ $System_Config['db_charset'] = 'utf8';
 $System_Config['db_collation'] = 'utf8_general_ci';
 $System_Config['db_prefix'] = '';
 $System_Config['muKeyList'] = ['　'];                //多 key 列表
+$System_Config['mu_port_migration'] = 'false';       //为后端直接下发偏移后的端口
+$System_Config['relay_port_migration'] = 'false';    //为中转规则下发偏移后的端口，此项未经测试
 
 #aws
 $System_Config['aws_access_key_id'] = '';
