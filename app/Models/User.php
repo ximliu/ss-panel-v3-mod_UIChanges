@@ -37,8 +37,8 @@ class User extends Model
 
     public function getGravatarAttribute()
     {
-        //  $hash = md5(strtolower(trim($this->attributes['email'])));
-        return '/images/Avatar.jpg';//.$hash;
+        $hash = md5(strtolower(trim($this->attributes['email'])));
+        return "https://secure.gravatar.com/avatar/".$hash;
     }
 
     public function isAdmin()
@@ -377,5 +377,17 @@ class User extends Model
     public function totalIncome()
     {
     	return Code::where('usedatetime','like',date('%'))->sum(number);
+    }
+    
+    public function paidUserCount()
+    {
+        return User::where('class',"!=",'0')->count();
+    }
+    
+    public function disableReason()
+    {
+        $reason_id = DetectLog::where('user_id','=',$this->attributes['id'])->orderBy('id', 'DESC')->first();
+        $reason = DetectRule::where("id","=",$reason_id->list_id)->get();
+        return $reason[0]->text;
     }
 }
