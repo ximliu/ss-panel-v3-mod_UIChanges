@@ -6,10 +6,8 @@
 //如需换行，直接换行即可，无需换行符
 //【新增/删除】config无需写入迁移附注
 $_ENV['config_migrate_notice'] =
-    'enable_geetest_* 已变更为 enable_*_captcha
-crisp已被替换为mylivechat
-telegrma_qrcode被重命名为qrcode
-
+'调整account_expire_delete_days：
+当余额高于auto_clean_min_money时，即使账户到期后也不会被删除，避免歧义
 ';
 $_ENV['version'] = '1';    //仅当涉及【需要修改config以外的文件】时才需要+1，站长勿动
 
@@ -98,6 +96,7 @@ $_ENV['checkinMin'] = '1';            //用户签到最少流量 单位MB
 $_ENV['checkinMax'] = '50';            //用户签到最多流量
 $_ENV['auto_clean_uncheck_days'] = '-1';            //自动清理多少天没签到的0级用户，小于等于0时关闭
 $_ENV['auto_clean_unused_days'] = '-1';            //自动清理多少天没使用的0级用户，小于等于0时关闭
+$_ENV['account_expire_delete_days'] = '-1';        //账户到期几天之后会清理，小于0时不清理（余额高于auto_clean_min_money时不会被清理）
 $_ENV['auto_clean_min_money'] = '1';        //余额低于多少的0级用户可以被清理
 $_ENV['code_payback'] = '20';            //充值返利百分比
 $_ENV['invite_gift'] = '2';            //邀请新用户获得流量奖励，单位G
@@ -108,7 +107,6 @@ $_ENV['port_price_specify'] = '-1';        //用户指明钦定端口所需要�
 
 #高级
 $_ENV['class_expire_reset_traffic'] = '0';        //等级到期时重置为的流量值，单位GB，小于0时不重置
-$_ENV['account_expire_delete_days'] = '-1';        //账户到期几天之后会删除账户，小于0时不删除
 $_ENV['enable_kill'] = 'true';                    //是否允许用户注销账户
 $_ENV['notify_limit_mode'] = 'false';            //false为关闭，per为按照百分比提醒，mb为按照固定剩余流量提醒
 $_ENV['notify_limit_value'] = '20';            //当上一项为per时，此处填写百分比；当上一项为mb时，此处填写流量
@@ -119,10 +117,6 @@ $_ENV['mergeSub'] = 'false';                        //合并订阅设置 可选�
 $_ENV['qrcode'] = 'zxing_local';                //二维码解码方式，online，phpzbar，zxing_online，zxing_local
 $_ENV['finance_public'] = 'false';            //财务报告是否向群公开
 $_ENV['enable_welcome_message'] = 'true';    //机器人发送欢迎消息
-
-#Discord
-$_ENV['enable_discord'] = 'false';    //是否开启Discord bot（仍未完成）
-$_ENV['discord_token'] = '';            //Discord bot,bot 的 token，在 https://discordapp.com/developers/applications/ 申请
 
 
 #Telegram
