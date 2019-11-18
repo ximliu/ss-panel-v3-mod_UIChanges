@@ -116,7 +116,6 @@ $_ENV['mergeSub'] = true;						//合并订阅设置 可选项 false / true
 
 //Bot 设置--------------------------------------------------------------------------------------------
 #通用
-$_ENV['qrcode'] = 'zxing_local';				//二维码解码方式，online，phpzbar，zxing_online，zxing_local
 $_ENV['finance_public'] = true;			//财务报告是否向群公开
 $_ENV['enable_welcome_message'] = true;	//机器人发送欢迎消息
 
@@ -172,7 +171,7 @@ $_ENV['enable_checkin_captcha'] = true;	//启用签到验证码
 
 
 //支付系统设置----------------------------------------------------------------------------------------
-#取值 none | codepay | f2fpay | chenAlipay | paymentwall | spay |tomatopay | payjs | yftpay
+#取值 none | codepay | f2fpay | chenAlipay | spay |tomatopay | payjs | yftpay
 $_ENV['payment_system'] = 'none';
 
 #yft支付设置
@@ -190,12 +189,6 @@ $_ENV['f2fpay_p_id'] = '';
 $_ENV['alipay_public_key'] = '';
 $_ENV['merchant_private_key'] = '';
 $_ENV['f2fNotifyUrl'] = null;                  //自定义当面付回调地址
-
-#PaymentWall
-$_ENV['pmw_publickey'] = '';
-$_ENV['pmw_privatekey'] = '';
-$_ENV['pmw_widget'] = 'm2_1';
-$_ENV['pmw_height'] = '350px';
 
 #alipay,spay
 $_ENV['alipay_id'] = '';
