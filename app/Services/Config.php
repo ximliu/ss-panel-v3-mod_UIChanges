@@ -18,7 +18,7 @@ class Config
         if ($value === null) {
             $value = DefaultConfig::firstOrCreate($key);
         }
-        return $value;
+        return $value->value;
     }
 
     public static function getPublicConfig()
@@ -41,7 +41,7 @@ class Config
             'enable_analytics_code' => self::get('enable_analytics_code'),
             'sspanelAnalysis' => self::get('sspanelAnalysis'),
             'enable_donate' => self::get('enable_donate'),
-            'enable_telegram' => self::get('enable_telegram'),
+            'enable_telegram' => self::get('new_telegram_enable'),
             'payment_system' => self::get('payment_system'),
             'enable_mylivechat' => self::get('enable_mylivechat'),
             'mylivechat_id' => self::get('mylivechat_id'),
@@ -64,7 +64,8 @@ class Config
             'auto_detect_ban_number' => self::get('auto_detect_ban_number'),
             'auto_detect_ban_time' => self::get('auto_detect_ban_time'),
             'auto_detect_ban' => self::get('auto_detect_ban'),
-            'subscribe_client' => self::get('subscribe_client')
+            'subscribe_client' => self::get('subscribe_client'),
+            'enable_sub_cache' => self::get('enable_sub_cache')
         ];
     }
 

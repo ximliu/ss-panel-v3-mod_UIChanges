@@ -378,6 +378,8 @@ class UserController extends BaseController
         $user->money -= $price;
         $user->save();
 
+        $user->cleanSubCache();
+
         $res['ret'] = 1;
         $res['msg'] = $user->port;
         return $response->getBody()->write(json_encode($res));
@@ -423,6 +425,8 @@ class UserController extends BaseController
 
         $user->money -= $price;
         $user->save();
+
+        $user->cleanSubCache();
 
         $res['ret'] = 1;
         $res['msg'] = '钦定成功';
@@ -821,7 +825,7 @@ class UserController extends BaseController
             ->assign('isBlock', $isBlock)
             ->assign('Block', $Block)
             ->assign('bind_token', $bind_token)
-            ->assign('telegram_bot', Config::get('telegram_bot'))
+            ->assign('telegram_bot', Config::get('new_telegram_username'))
             ->assign('config_service', $config_service)
             ->registerClass('URL', URL::class)
             ->display('user/edit.tpl');
@@ -1493,6 +1497,8 @@ class UserController extends BaseController
 
         $user->save();
 
+        $user->cleanSubCache();
+
         if (!URL::SSCanConnect($user)) {
             $res['ret'] = 1;
             $res['msg'] = '设置成功，但您目前的协议，混淆，加密方式设置会导致 Shadowsocks原版客户端无法连接，请您自行更换到 ShadowsocksR 客户端。';
@@ -1599,6 +1605,7 @@ class UserController extends BaseController
 
         Radius::Add($user, $pwd);
 
+        $user->cleanSubCache();
 
         return $this->echoJson($response, $res);
     }
@@ -1690,16 +1697,14 @@ class UserController extends BaseController
             return $response->getBody()->write(json_encode($res));
         }
 
-        if (!$this->user->isAbleToCheckin()) {
+        $checkin = $this->user->checkin();
+        if ($checkin['ok'] === false) {
             $res['ret'] = 0;
-            $res['msg'] = '您似乎已经签到过了...';
-            return $response->getBody()->write(json_encode($res));
+            $res['msg'] = $checkin['msg'];
+            return $this->echoJson($response, $res);
         }
-        $traffic = random_int(Config::get('checkinMin'), Config::get('checkinMax'));
-        $this->user->transfer_enable += Tools::toMB($traffic);
-        $this->user->last_check_in_time = time();
-        $this->user->save();
-        $res['msg'] = sprintf('获得了 %d MB流量.', $traffic);
+
+        $res['msg'] = $checkin['msg'];
         $res['unflowtraffic'] = $this->user->transfer_enable;
         $res['traffic'] = Tools::flowAutoShow($this->user->transfer_enable);
         $res['trafficInfo'] = array(
@@ -1733,6 +1738,7 @@ class UserController extends BaseController
 
         if (Config::get('enable_kill') == true) {
             Auth::logout();
+            $user->cleanSubCache();
             $user->kill_user();
             $res['ret'] = 1;
             $res['msg'] = '您的帐号已经从我们的系统中删除。欢迎下次光临!';
@@ -1783,6 +1789,7 @@ class UserController extends BaseController
     {
         $user = $this->user;
         $user->clean_link();
+        $user->cleanSubCache();
         return $response->withStatus(302)->withHeader('Location', '/user');
     }
 
@@ -1858,6 +1865,8 @@ class UserController extends BaseController
         $user->obfs = $scheme['obfs'];
         $user->save();
 
+        $user->cleanSubCache();
+
         $res['ret'] = 1;
         $res['msg'] = '切换' . $scheme['name'] . '成功';
 
@@ -1903,11 +1912,11 @@ class UserController extends BaseController
         return $this->view()->assign('logs', $logs)->assign('iplocation', $iplocation)->display('user/subscribe_log.tpl');
     }
 
-    /** 
+    /**
      * 获取包含订阅信息的客户端压缩档
-     * 
-     * @param Request  $request 
-     * @param Response $response 
+     *
+     * @param Request  $request
+     * @param Response $response
      * @param array    $args
      */
     public function getPcClient($request, $response, $args)
@@ -1961,18 +1970,20 @@ class UserController extends BaseController
         return $newResponse;
     }
 
-    /** 
+    /**
      * 清理订阅缓存
-     * 
-     * @param Request  $request 
-     * @param Response $response 
+     *
+     * @param Request  $request
+     * @param Response $response
      * @param array    $args
      */
     public function cleanSubCache($request, $response, $args)
     {
-        $user_path = (BASE_PATH . '/storage/SubscribeCache/' . $this->user->id . '/');
-        Tools::delDirAndFile($user_path);
+        $this->user->cleanSubCache();
 
-        return $response->withStatus(302)->withHeader('Location', '/user');
+        $res['ret'] = 1;
+        $res['msg'] = '清理成功';
+
+        return $this->echoJson($response, $res);
     }
 }

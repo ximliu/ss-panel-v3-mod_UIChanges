@@ -140,6 +140,36 @@ class User extends Model
         )->toString();
     }
 
+    /*
+     * 总流量
+     */
+    public function enableTraffic()
+    {
+        $transfer_enable = $this->attributes['transfer_enable'];
+        return Tools::flowAutoShow($transfer_enable);
+    }
+
+    /*
+     * 总流量[GB]
+     */
+    public function enableTrafficInGB()
+    {
+        $transfer_enable = $this->attributes['transfer_enable'];
+        return Tools::flowToGB($transfer_enable);
+    }
+
+    /*
+     * 已用流量
+     */
+    public function usedTraffic()
+    {
+        $total = $this->attributes['u'] + $this->attributes['d'];
+        return Tools::flowAutoShow($total);
+    }
+
+    /*
+     * 已用流量占总流量的百分比
+     */
     public function trafficUsagePercent()
     {
         $total = $this->attributes['u'] + $this->attributes['d'];
@@ -153,24 +183,9 @@ class User extends Model
         return $percent;
     }
 
-    public function enableTraffic()
-    {
-        $transfer_enable = $this->attributes['transfer_enable'];
-        return Tools::flowAutoShow($transfer_enable);
-    }
-
-    public function enableTrafficInGB()
-    {
-        $transfer_enable = $this->attributes['transfer_enable'];
-        return Tools::flowToGB($transfer_enable);
-    }
-
-    public function usedTraffic()
-    {
-        $total = $this->attributes['u'] + $this->attributes['d'];
-        return Tools::flowAutoShow($total);
-    }
-
+    /*
+     * 剩余流量
+     */
     public function unusedTraffic()
     {
         $total = $this->attributes['u'] + $this->attributes['d'];
@@ -178,18 +193,75 @@ class User extends Model
         return Tools::flowAutoShow($transfer_enable - $total);
     }
 
+    /*
+     * 剩余流量占总流量的百分比
+     */
+    public function unusedTrafficPercent()
+    {
+        $transferEnable = $this->attributes['transfer_enable'];
+        if ($transferEnable == 0) {
+            return 0;
+        }
+        $unusedTraffic = $transferEnable - ($this->attributes['u'] + $this->attributes['d']);
+        $percent = $unusedTraffic / $transferEnable;
+        $percent = round($percent, 2);
+        $percent *= 100;
+        return $percent;
+    }
+
+    /*
+     * 今天使用的流量
+     */
     public function TodayusedTraffic()
     {
         $total = $this->attributes['u'] + $this->attributes['d'] - $this->attributes['last_day_t'];
         return Tools::flowAutoShow($total);
     }
 
+    /*
+     * 今天使用的流量占总流量的百分比
+     */
+    public function TodayusedTrafficPercent()
+    {
+        $transferEnable = $this->attributes['transfer_enable'];
+        if ($transferEnable == 0) {
+            return 0;
+        }
+        $TodayusedTraffic = $this->attributes['u'] + $this->attributes['d'] - $this->attributes['last_day_t'];
+        $percent = $TodayusedTraffic / $transferEnable;
+        $percent = round($percent, 2);
+        $percent *= 100;
+        return $percent;
+    }
+
+    /*
+     * 今天之前已使用的流量
+     */
     public function LastusedTraffic()
     {
         $total = $this->attributes['last_day_t'];
         return Tools::flowAutoShow($total);
     }
 
+    /*
+     * 今天之前已使用的流量占总流量的百分比
+     */
+    public function LastusedTrafficPercent()
+    {
+        $transferEnable = $this->attributes['transfer_enable'];
+        if ($transferEnable == 0) {
+            return 0;
+        }
+        $LastusedTraffic = $this->attributes['last_day_t'];
+        $percent = $LastusedTraffic / $transferEnable;
+        $percent = round($percent, 2);
+        $percent *= 100;
+        return $percent;
+    }
+
+    /*
+     * 是否可以签到
+     */
     public function isAbleToCheckin()
     {
         $last = $this->attributes['last_check_in_time'];
@@ -441,7 +513,7 @@ class User extends Model
     	}
     	return is_null($number)?0:$number;
     }
-    
+
     public function paidUserCount()
     {
         return self::where('class', '!=', '0')->count();
@@ -452,5 +524,40 @@ class User extends Model
         $reason_id = DetectLog::where('user_id', '=', $this->attributes['id'])->orderBy('id', 'DESC')->first();
         $reason = DetectRule::where('id', '=', $reason_id->list_id)->get();
         return $reason[0]->text;
+    }
+
+    /**
+     * 清理订阅缓存
+     */
+    public function cleanSubCache()
+    {
+        $id = $this->attributes['id'];
+        $user_path = (BASE_PATH . '/storage/SubscribeCache/' . $id . '/');
+        if (is_dir($user_path)) {
+            Tools::delDirAndFile($user_path);
+        }
+    }
+
+    /**
+     * 签到
+     */
+    public function checkin()
+    {
+        $return = [
+            'ok'  => true,
+            'msg' => ''
+        ];
+        if (!$this->isAbleToCheckin()) {
+            $return['ok']  = false;
+            $return['msg'] = '您似乎已经签到过了...';
+        } else {
+            $traffic = random_int((int) Config::get('checkinMin'), (int) Config::get('checkinMax'));
+            $this->transfer_enable += Tools::toMB($traffic);
+            $this->last_check_in_time = time();
+            $this->save();
+            $return['msg'] = '获得了 ' . $traffic . 'MB 流量.';
+        }
+
+        return $return;
     }
 }

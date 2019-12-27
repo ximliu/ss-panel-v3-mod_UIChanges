@@ -10,6 +10,7 @@ use App\Utils\TelegramSessionManager;
 use App\Utils\TelegramProcess;
 use App\Utils\Geetest;
 use App\Utils\Tools;
+use App\Utils\Telegram\Process;
 use Slim\Http\{Request, Response};
 use Psr\Http\Message\ResponseInterface;
 
@@ -39,7 +40,7 @@ class HomeController extends BaseController
             }
         }
 
-        if (Config::get('enable_telegram') == true) {
+        if (Config::get('new_telegram_enable') == true) {
             $login_text = TelegramSessionManager::add_login_session();
             $login = explode('|', $login_text);
             $login_token = $login[0];
@@ -56,7 +57,7 @@ class HomeController extends BaseController
                 ->assign('geetest_html', $GtSdk)
                 ->assign('login_token', $login_token)
                 ->assign('login_number', $login_number)
-                ->assign('telegram_bot', Config::get('telegram_bot'))
+                ->assign('telegram_bot', Config::get('new_telegram_username'))
                 ->assign('enable_logincaptcha', Config::get('enable_login_captcha'))
                 ->assign('enable_regcaptcha', Config::get('enable_reg_captcha'))
                 ->assign('base_url', Config::get('baseUrl'))
@@ -116,6 +117,23 @@ class HomeController extends BaseController
         $token = $request->getQueryParam('token');
         if ($token == Config::get('telegram_request_token')) {
             TelegramProcess::process();
+            $result = '1';
+        } else {
+            $result = '0';
+        }
+        return $response->write($result);
+    }
+
+    /**
+     * @param Request   $request
+     * @param Response  $response
+     * @param array     $args
+     */
+    public function NewTelegram($request, $response, $args): ResponseInterface
+    {
+        $token = $request->getQueryParam('token');
+        if ($token == Config::get('new_telegram_request_token')) {
+            Process::index();
             $result = '1';
         } else {
             $result = '0';
