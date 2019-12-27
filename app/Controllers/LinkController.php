@@ -318,7 +318,7 @@ class LinkController extends BaseController
             // v2
             $v2_items = URL::getAllVMessUrl($user, 1, $emoji);
             foreach ($v2_items as $item) {
-                if (!in_array($item['net'], ['ws', 'tcp'])) {
+                if (!in_array($item['net'], ['ws', 'tcp','kcp','quic','h2'])) {
                     continue;
                 }
                 $item['remark'] = $item['ps'];
@@ -353,7 +353,7 @@ class LinkController extends BaseController
             // v2
             $v2_items = URL::getAllVMessUrl($user, 1, $emoji);
             foreach ($v2_items as $item) {
-                if (!in_array($item['net'], ['ws', 'tcp'])) {
+                if (!in_array($item['net'], ['ws', 'tcp','kcp','quic','h2'])) {
                     continue;
                 }
                 $tls = ($item['tls'] == 'tls'
@@ -434,7 +434,7 @@ class LinkController extends BaseController
             $v2ray_name = '';
             $v2rays = URL::getAllVMessUrl($user, 1, $emoji);
             foreach ($v2rays as $v2ray) {
-                if ($v2ray['net'] == 'kcp' || $v2ray['net'] == 'quic') {
+                if (in_array($v2ray['net'], array( 'kcp', 'quic','h2'))){
                     continue;
                 }
                 if (strpos($v2ray['ps'], '回国') or strpos($v2ray['ps'], 'China')) {
@@ -444,7 +444,13 @@ class LinkController extends BaseController
                 }
                 $v2ray_tls = ', over-tls=false, certificate=1';
                 if (($v2ray['net'] == 'tcp' && $v2ray['tls'] == 'tls') || $v2ray['tls'] == 'tls') {
-                    $v2ray_tls = ', over-tls=true, tls-host=' . $v2ray['add'] . ', certificate=1';
+                    $v2ray_tls = ', over-tls=true, tls-host=' . $v2ray['add'];
+                    if ($v2ray['verify_cert']) {
+                                $v2ray_tls.=', certificate=1';
+                        }else{
+                        $v2ray_tls.=', certificate=0';
+                    }
+
                 }
                 $v2ray_obfs = '';
                 if ($v2ray['net'] == 'ws' || $v2ray['net'] == 'http') {
@@ -600,6 +606,11 @@ class LinkController extends BaseController
                         $sss['plugin-opts']['mode'] = 'websocket';
                         if (strpos($item['obfs_param'], 'security=tls')) {
                             $sss['plugin-opts']['tls'] = true;
+                            if ($item['verify_cert']==false) {
+
+                                    $sss['plugin-opts']['skip-cert-verify']=true;
+
+                            }
                         }
                         $sss['plugin-opts']['host'] = $item['host'];
                         $sss['plugin-opts']['path'] = $item['path'];
@@ -622,7 +633,7 @@ class LinkController extends BaseController
         // v2
         $items = URL::getAllVMessUrl($user, 1, $emoji);
         foreach ($items as $item) {
-            if (in_array($item['net'], array('kcp', 'http', 'quic'))) {
+            if (in_array($item['net'], array('kcp', 'http', 'quic','h2'))) {
                 continue;
             }
             $v2rays = [
@@ -646,6 +657,12 @@ class LinkController extends BaseController
                 }
             } elseif (($item['net'] == 'tcp' && $item['tls'] == 'tls') || $item['net'] == 'tls') {
                 $v2rays['tls'] = true;
+            }
+
+            if ($item['verify_cert']==false) {
+
+                    $v2rays['skip-cert-verify']=true;
+
             }
             if (isset($opts['source']) && $opts['source'] != '') {
                 $v2rays['class'] = $item['class'];
@@ -786,7 +803,7 @@ class LinkController extends BaseController
         // v2ray
         $items = URL::getAllVMessUrl($user, 1);
         foreach ($items as $item) {
-            if ($item['net'] == 'kcp') {
+            if (in_array($item['net'], array( 'http', 'quic'))) {
                 continue;
             }
             if ($find) {
@@ -811,8 +828,33 @@ class LinkController extends BaseController
                 $obfs .= ($item['tls'] == 'tls'
                     ? '&tls=1'
                     : '&tls=0');
-            } else {
+
+            } elseif($item['net'] == 'kcp' || $item['net'] == 'mkcp'){
+                $obfs .='obfsParam={"header":'.'"'.($item['type'] == ''||$item['type'] == 'noop'
+                        ? 'none'
+                        : $item['type']).'"'.'}&obfs=mkcp';
+            }
+              elseif ($item['net'] == 'h2'){
+                  $obfs .= ($item['host'] != ''
+                      ? ('&obfsParam=' . $item['host'] .
+                          '&path=' . $item['path'] . '&obfs=h2')
+                      : ('&obfsParam=' . $item['add'] .
+                          '&path=' . $item['path'] . '&obfs=h2'));
+                  $obfs .= ($item['tls'] == 'tls'
+                      ? '&tls=1'
+                      : '&tls=0');
+                }
+
+            else {
                 $obfs .= '&obfs=none';
+            }
+
+            if ($obfs!='&obfs=none' && $item['net'] != 'h2'){
+
+                    if ($item['verify_cert']==false){
+                        $obfs.="&allowInsecure=1";
+                    }
+
             }
             $return .= ('vmess://' . Tools::base64_url_encode(
                 'chacha20-poly1305:' . $item['id'] .
@@ -924,11 +966,18 @@ class LinkController extends BaseController
                     $protocol .= ('&wspath=' . $item['path'] .
                         '&wsHost=' . $item['host']);
                     break;
+                case "h2":
+                    $protocol .= ('&h2Path=' . $item['path'] .
+                        '&h2Host=' . $item['host']);
+                    break;
             }
             $tls = ($item['tls'] == 'tls' || $item['net'] == 'tls'
                 ? '&tls=1'
                 : '&tls=0');
-            $mux = '&mux=1&muxConcurrency=8';
+            if ($item['verify_cert']==false && ($item['tls'] == 'tls' || $item['net'] == 'tls')) {
+                $tls .='&allowInsecure=1';
+            }
+            $mux = '&mux=&muxConcurrency=8';
             $return .= ('vmess://' . base64_encode(
                 'auto:' . $item['id'] .
                     '@' . $item['add'] . ':' . $item['port']
