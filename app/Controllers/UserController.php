@@ -73,6 +73,8 @@ class UserController extends BaseController
 
         $Ann = Ann::orderBy('date', 'desc')->first();
 
+        $boughts = Bought::where('userid', $this->user->id)->orderBy('id', 'desc')->get();
+
         return $this->view()
             ->assign('subInfo', LinkController::getSubinfo($this->user, 0))
             ->assign('ssr_sub_token', $ssr_sub_token)
@@ -85,6 +87,7 @@ class UserController extends BaseController
             ->assign('mergeSub', Config::get('mergeSub'))
             ->assign('subUrl', Config::get('subUrl'))
             ->assign('user', $this->user)
+            ->assign('boughts', $boughts)
             ->registerClass('URL', URL::class)
             ->assign('baseUrl', Config::get('baseUrl'))
             ->assign('recaptcha_sitekey', $recaptcha_sitekey)
@@ -355,81 +358,20 @@ class UserController extends BaseController
 
     public function ResetPort($request, $response, $args)
     {
-        $price = Config::get('port_price');
         $user = $this->user;
-
-        if ($user->money < $price) {
-            $res['ret'] = 0;
-            $res['msg'] = '余额不足';
-            return $response->getBody()->write(json_encode($res));
-        }
-
-        $origin_port = $user->port;
-
-        $user->port = Tools::getAvPort();
-
-
-        $relay_rules = Relay::where('user_id', $user->id)->where('port', $origin_port)->get();
-        foreach ($relay_rules as $rule) {
-            $rule->port = $user->port;
-            $rule->save();
-        }
-
-        $user->money -= $price;
-        $user->save();
-
-        $user->cleanSubCache();
-
-        $res['ret'] = 1;
-        $res['msg'] = $user->port;
+        $temp = $user->ResetPort();
+        $res['msg'] = $temp['msg'];
+        $res['ret'] = ($temp['ok'] === true ? 1 : 0);
         return $response->getBody()->write(json_encode($res));
     }
 
     public function SpecifyPort($request, $response, $args)
     {
-        $price = Config::get('port_price_specify');
         $user = $this->user;
-
-        if ($user->money < $price) {
-            $res['ret'] = 0;
-            $res['msg'] = '余额不足';
-            return $response->getBody()->write(json_encode($res));
-        }
-
         $port = $request->getParam('port');
-
-        if ($port < Config::get('min_port') || $port > Config::get('max_port') || Tools::isInt($port) == false) {
-            $res['ret'] = 0;
-            $res['msg'] = '端口不在要求范围内';
-            return $response->getBody()->write(json_encode($res));
-        }
-
-        $port_occupied = User::pluck('port')->toArray();
-
-        if (in_array($port, $port_occupied) == true) {
-            $res['ret'] = 0;
-            $res['msg'] = '端口已被占用';
-            return $response->getBody()->write(json_encode($res));
-        }
-
-        $origin_port = $user->port;
-
-        $user->port = $port;
-
-
-        $relay_rules = Relay::where('user_id', $user->id)->where('port', $origin_port)->get();
-        foreach ($relay_rules as $rule) {
-            $rule->port = $user->port;
-            $rule->save();
-        }
-
-        $user->money -= $price;
-        $user->save();
-
-        $user->cleanSubCache();
-
-        $res['ret'] = 1;
-        $res['msg'] = '钦定成功';
+        $temp = $user->SpecifyPort($port);
+        $res['msg'] = $temp['msg'];
+        $res['ret'] = ($temp['ok'] === true ? 1 : 0);
         return $response->getBody()->write(json_encode($res));
     }
 
@@ -487,7 +429,7 @@ class UserController extends BaseController
                 $server = Tools::ssv2Array($node->server);
                 $array_node['server'] = $server['add'];
             } else {
-                $array_node['server'] = $node->server;
+                $array_node['server'] = $node->getServer();
             }
             $array_node['sort'] = $node->sort;
             $array_node['info'] = $node->info;
@@ -825,7 +767,7 @@ class UserController extends BaseController
             ->assign('isBlock', $isBlock)
             ->assign('Block', $Block)
             ->assign('bind_token', $bind_token)
-            ->assign('telegram_bot', Config::get('new_telegram_username'))
+            ->assign('telegram_bot', Config::get('telegram_bot'))
             ->assign('config_service', $config_service)
             ->registerClass('URL', URL::class)
             ->display('user/edit.tpl');
@@ -1780,8 +1722,7 @@ class UserController extends BaseController
     public function telegram_reset($request, $response, $args)
     {
         $user = $this->user;
-        $user->telegram_id = 0;
-        $user->save();
+        $user->TelegramReset();
         return $response->withStatus(302)->withHeader('Location', '/user/edit');
     }
 
@@ -1886,7 +1827,7 @@ class UserController extends BaseController
                 $return .= URL::getAllUrl($user, 0, 0) . PHP_EOL;
                 break;
             case 'ssd':
-                $return .= URL::getAllSSDUrl($user) . PHP_EOL;
+                $return .= LinkController::getSSD($user, 1, [], ['type' => 'ss', 'is_mu' => 1], false) . PHP_EOL;
                 break;
             case 'v2ray':
                 $return .= URL::getAllVMessUrl($user) . PHP_EOL;

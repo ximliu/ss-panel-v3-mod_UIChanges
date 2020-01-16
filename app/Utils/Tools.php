@@ -44,6 +44,45 @@ class Tools
         return round($value, 2) . 'B';
     }
 
+    /**
+     * 根据流量值转换 B 输出
+     */
+    public static function flowAutoShowZ($Value)
+    {
+        $number = substr($Value, 0, strlen($Value) - 2);
+        if (!is_numeric($number)) return null;
+        $unit = strtoupper(substr($Value, -2));
+        $kb = 1024;
+        $mb = 1048576;
+        $gb = 1073741824;
+        $tb = $gb * 1024;
+        $pb = $tb * 1024;
+        switch ($unit) {
+            case 'B':
+                $number = round($number, 2);
+                break;
+            case 'KB':
+                $number = round($number * $kb, 2);
+                break;
+            case 'MB':
+                $number = round($number * $mb, 2);
+                break;
+            case 'GB':
+                $number = round($number * $gb, 2);
+                break;
+            case 'TB':
+                $number = round($number * $tb, 2);
+                break;
+            case 'PB':
+                $number = round($number * $pb, 2);
+                break;
+            default:
+                return null;
+                break;
+        }
+        return $number;
+    }
+
     //虽然名字是toMB，但是实际上功能是from MB to B
     public static function toMB($traffic)
     {
@@ -386,6 +425,13 @@ class Tools
         }
         return $object;
     }
+    public static function relayRulePortCheck($rules){
+        $res = array();
+        foreach($rules as $value) {
+            $res[$value->port][] = $value->port;
+        }
+        return count($res)==count($rules);
+    }
 
     public static function getRelayNodeIp($source_node, $dist_node)
     {
@@ -444,7 +490,8 @@ class Tools
         $item = [
             'host' => '',
             'path' => '',
-            'tls' => ''
+            'tls' => '',
+            "verify_cert" => true
         ];
         $item['add'] = $server[0];
         if ($server[1] == '0' || $server[1] == '') {
@@ -464,7 +511,7 @@ class Tools
             }
         }
         if (count($server) >= 5) {
-            if (in_array($item['net'], array('kcp', 'http'))) {
+            if (in_array($item['net'], array('kcp', 'http','mkcp'))) {
                 $item['type'] = $server[4];
             } elseif ($server[4] == 'ws') {
                 $item['net'] = 'ws';
@@ -477,6 +524,14 @@ class Tools
             if (array_key_exists('server', $item)) {
                 $item['add'] = $item['server'];
                 unset($item['server']);
+            }
+            if (array_key_exists('relayserver', $item)) {
+                $item['localserver']= $item['add'];
+                $item['add'] = $item['relayserver'];
+                unset($item['relayserver']);
+                if ($item['tls']=='tls'){
+                    $item['verify_cert']=false;
+                }
             }
             if (array_key_exists('outside_port', $item)) {
                 $item['port'] = (int) $item['outside_port'];
@@ -529,9 +584,21 @@ class Tools
                 $item['add'] = $item['server'];
                 unset($item['server']);
             }
+            if (array_key_exists('relayserver', $item)) {
+                $item['add'] = $item['relayserver'];
+                unset($item['relayserver']);
+            }
             if (array_key_exists('outside_port', $item)) {
                 $item['port'] = (int) $item['outside_port'];
                 unset($item['outside_port']);
+            }
+        }
+        if ($item['net'] == 'obfs') {
+            if (stripos($server[4], 'http') !== false) {
+                $item['obfs'] = 'simple_obfs_http';
+            }
+            if (stripos($server[4], 'tls') !== false) {
+                $item['obfs'] = 'simple_obfs_tls';
             }
         }
         return $item;

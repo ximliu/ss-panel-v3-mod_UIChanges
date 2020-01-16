@@ -139,7 +139,7 @@ class URL
         return $new_user;
     }
 
-    public static function getAllItems($user, $is_mu = 0, $is_ss = 0, $emoji = 0)
+    public static function getAllItems($user, $is_mu = 0, $is_ss = 0, $emoji = false)
     {
         $return_array = array();
         if ($user->is_admin) {
@@ -239,6 +239,209 @@ class URL
         return $return_array;
     }
 
+    public static function getNew_AllItems($user, $Rule)
+    {
+        // $Rule = [
+        //     'type'    => 'ss | ssr | vmess',
+        //     'emoji'   => false,
+        //     'is_mu'   => 1
+        //     'content' => [
+        //         'noclass' => [0, 1, 2],
+        //         'class'   => [0, 1, 2],
+        //         'regex'   => '.*香港.*HKBN.*',
+        //     ]
+        // ];
+        $is_mu = $Rule['is_mu'];
+        $is_ss = 0;
+        $emoji = (isset($Rule['emoji']) ? $Rule['emoji'] : false);
+        switch ($Rule['type']) {
+            case 'ss':
+                $sort = [0, 10, 13];
+                $is_ss = 1;
+                break;
+            case 'ssr':
+                $sort = [0, 10];
+                break;
+            case 'vmess':
+                $sort = [11, 12];
+                break;
+            default:
+                $Rule['type'] = 'all';
+                $sort = [0, 10, 11, 12, 13];
+                break;
+        }
+        if ($user->is_admin) {
+            $nodes = Node::whereIn('sort', $sort)->where('type', '1')->orderBy('name')->get();
+        } else {
+            $node_query = Node::query();
+            $node_query->whereIn('sort', $sort)->where('type', '1')->where(
+                static function ($query) use ($user) {
+                    $query->where('node_group', '=', $user->node_group)
+                        ->orWhere('node_group', '=', 0);
+                }
+            );
+            $class = [];
+            if (isset($Rule['content']['class']) && count($Rule['content']['class']) > 0) {
+                foreach ($Rule['content']['class'] as $x) {
+                    if ($x <= $user->class && $x >= 0 && !in_array($x, $class)) {
+                        $class[] = $x;
+                    }
+                }
+            }
+            if (count($class) > 0) {
+                $node_query->whereIn('node_class', $class);
+            } else {
+                $node_query->where('node_class', '<=', $user->class);
+            }
+            $nodes = $node_query->orderBy('name')->get();
+        }
+        $return_array = array();
+        if ($is_mu != 0 && $Rule['type'] != 'vmess') {
+            $mu_node_query = Node::query();
+            $mu_node_query->where('sort', 9)->where('type', '1');
+            if ($user->is_admin) {
+                if ($is_mu != 1) {
+                    $mu_node_query->where('server', $is_mu);
+                }
+            } elseif ($is_mu != 1) {
+                $mu_node_query->where('server', $is_mu)
+                    ->where('node_class', '<=', $user->class)
+                    ->where(
+                        static function ($query) use ($user) {
+                            $query->where('node_group', '=', $user->node_group)
+                                ->orWhere('node_group', '=', 0);
+                        }
+                    );
+            } else {
+                $mu_node_query->where('node_class', '<=', $user->class)
+                    ->where(
+                        static function ($query) use ($user) {
+                            $query->where('node_group', '=', $user->node_group)
+                                ->orWhere('node_group', '=', 0);
+                        }
+                    );
+            }
+            $mu_nodes = $mu_node_query->get();
+        }
+        if (!Tools::is_protocol_relay($user)) {
+            $relay_rules = array();
+        } else {
+            $relay_rules = Relay::where('user_id', $user->id)->orwhere('user_id', 0)->orderBy('id', 'asc')->get();
+        }
+        $foreachss = [];
+        if ($Rule['type'] == 'all') {
+            $foreachss = [0, 1];
+        } else {
+            $foreachss[] = $is_ss;
+        }
+        foreach ($foreachss as $x) {
+            // all is_ss *2
+            foreach ($nodes as $node) {
+                if (in_array($node->sort, [13]) && (($Rule['type'] == 'all' && $x == 0) || ($Rule['type'] != 'all'))) {
+                    // Rico SS (V2RayPlugin && obfs)
+                    $item = self::getV2RayPluginItem($user, $node, $emoji);
+                    if ($item != null) {
+                        $find = (isset($Rule['content']['regex']) && $Rule['content']['regex'] != '' ? ConfController::getMatchProxy($item, ['content' => ['regex' => $Rule['content']['regex']]]) : true);
+                        if ($find) {
+                            $return_array[] = $item;
+                        }
+                    }
+                    continue;
+                }
+                if (in_array($node->sort, [11, 12]) && (($Rule['type'] == 'all' && $x == 0) || ($Rule['type'] != 'all'))) {
+                    // V2Ray
+                    $item = self::getV2Url($user, $node, 1, $emoji);
+                    if ($item != null) {
+                        $find = (isset($Rule['content']['regex']) && $Rule['content']['regex'] != '' ? ConfController::getMatchProxy($item, ['content' => ['regex' => $Rule['content']['regex']]]) : true);
+                        if ($find) {
+                            $return_array[] = $item;
+                        }
+                    }
+                    continue;
+                }
+                if (in_array($node->sort, [0, 10]) && $node->mu_only != 1 && ($is_mu == 0 || ($is_mu != 0 && Config::get('mergeSub') === true))) {
+                    // 节点非只启用单端口 && 只获取普通端口
+                    if ($node->sort == 10) {
+                        // SS 中转
+                        $relay_rule_id = 0;
+                        $relay_rule = Tools::pick_out_relay_rule($node->id, $user->port, $relay_rules);
+                        if ($relay_rule != null && $relay_rule->dist_node() != null) {
+                            $relay_rule_id = $relay_rule->id;
+                        }
+                        $item = self::getItem($user, $node, 0, $relay_rule_id, $x, $emoji);
+                        if ($item != null) {
+                            $find = (isset($Rule['content']['regex']) && $Rule['content']['regex'] != '' ? ConfController::getMatchProxy($item, ['content' => ['regex' => $Rule['content']['regex']]]) : true);
+                            if ($find) {
+                                $return_array[] = $item;
+                            }
+                        }
+                    } else {
+                        // SS 非中转
+                        $item = self::getItem($user, $node, 0, 0, $x, $emoji);
+                        if ($item != null) {
+                            $find = (isset($Rule['content']['regex']) && $Rule['content']['regex'] != '' ? ConfController::getMatchProxy($item, ['content' => ['regex' => $Rule['content']['regex']]]) : true);
+                            if ($find) {
+                                $return_array[] = $item;
+                            }
+                        }
+                    }
+                }
+                if (in_array($node->sort, [0, 10]) && $node->custom_rss == 1 && $node->mu_only != -1 && $is_mu != 0) {
+                    // 非只启用普通端口 && 获取单端口
+                    foreach ($mu_nodes as $mu_node) {
+                        if ($node->sort == 10) {
+                            // SS 中转
+                            $relay_rule_id = 0;
+                            $relay_rule = Tools::pick_out_relay_rule($node->id, $mu_node->server, $relay_rules);
+                            if ($relay_rule != null && $relay_rule->dist_node() != null) {
+                                $relay_rule_id = $relay_rule->id;
+                            }
+                            $item = self::getItem($user, $node, $mu_node->server, $relay_rule_id, $x, $emoji);
+                            if ($item != null) {
+                                $find = (isset($Rule['content']['regex']) && $Rule['content']['regex'] != '' ? ConfController::getMatchProxy($item, ['content' => ['regex' => $Rule['content']['regex']]]) : true);
+                                if ($find) {
+                                    $return_array[] = $item;
+                                }
+                            }
+                        } else {
+                            // SS 非中转
+                            $item = self::getItem($user, $node, $mu_node->server, 0, $x, $emoji);
+                            if ($item != null) {
+                                $find = (isset($Rule['content']['regex']) && $Rule['content']['regex'] != '' ? ConfController::getMatchProxy($item, ['content' => ['regex' => $Rule['content']['regex']]]) : true);
+                                if ($find) {
+                                    $return_array[] = $item;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (!isset($Rule['content']['class']) && isset($Rule['content']['noclass']) && count($Rule['content']['noclass']) > 0) {
+            // 如果设置不需要的等级的节点
+            $tmp = [];
+            foreach ($return_array as $outnode) {
+                if (!in_array($outnode['class'], $Rule['content']['noclass'])) {
+                    // 放行节点等级不存在数组内的
+                    $tmp[] = $outnode;
+                }
+            }
+            $return_array = $tmp;
+        }
+        if ($Rule['type'] != 'all') {
+            // 如果获取节点的类型不是 all
+            $tmp = [];
+            foreach ($return_array as $outnode) {
+                if ($outnode['type'] == $Rule['type']) {
+                    // 放行类型相同
+                    $tmp[] = $outnode;
+                }
+            }
+            $return_array = $tmp;
+        }
+        return $return_array;
+    }
+
     public static function getAllUrl($user, $is_mu, $is_ss = 0, $getV2rayPlugin = 1)
     {
         $return_url = '';
@@ -269,33 +472,32 @@ class URL
      *
      * @return string
      */
-    public static function get_NewAllUrl($user, $is_ss, $getV2rayPlugin, $Rule, $find, $emoji = 0)
+    public static function get_NewAllUrl($user, $is_ss, $getV2rayPlugin, $Rule, $find, $emoji = false)
     {
         $return_url = '';
         if (strtotime($user->expire_in) < time()) {
             return $return_url;
         }
-        if ($getV2rayPlugin === 0) {
-            $items = array_merge(
-                self::getAllItems($user, 0, $is_ss, $emoji),
-                self::getAllItems($user, 1, $is_ss, $emoji)
-            );
-        } else {
-            $items = array_merge(
-                self::getAllItems($user, 0, $is_ss, $emoji),
-                self::getAllItems($user, 1, $is_ss, $emoji),
-                self::getAllV2RayPluginItems($user, $emoji)
-            );
-        }
+        $items = array_merge(
+            self::getAllItems($user, 0, $is_ss, $emoji),
+            self::getAllItems($user, 1, $is_ss, $emoji),
+            self::getAllV2RayPluginItems($user, $emoji)
+        );
         if ($find) {
             foreach ($items as $item) {
                 $item = ConfController::getMatchProxy($item, $Rule);
                 if ($item !== null) {
+                    if ($getV2rayPlugin === 0 && $item['obfs'] == 'v2ray') {
+                        continue;
+                    }
                     $return_url .= self::getItemUrl($item, $is_ss) . PHP_EOL;
                 }
             }
         } else {
             foreach ($items as $item) {
+                if ($getV2rayPlugin === 0 && $item['obfs'] == 'v2ray') {
+                    continue;
+                }
                 $return_url .= self::getItemUrl($item, $is_ss) . PHP_EOL;
             }
         }
@@ -362,7 +564,7 @@ class URL
      *
      * @return array
      */
-    public static function getAllV2RayPluginItems($user, $emoji = 0)
+    public static function getAllV2RayPluginItems($user, $emoji = false)
     {
         $return_array = array();
         if ($user->is_admin) {
@@ -401,14 +603,14 @@ class URL
      *
      * @return array
      */
-    public static function getV2RayPluginItem($user, $node, $emoji = 0)
+    public static function getV2RayPluginItem($user, $node, $emoji = false)
     {
+        $return_array = Tools::ssv2Array($node->server);
         // 非 AEAD 加密无法使用
-        if (!in_array($user->method, Config::getSupportParam('ss_aead_method'))) {
+        if ($return_array['net'] != 'obfs' && !in_array($user->method, Config::getSupportParam('ss_aead_method'))) {
             return null;
         }
-        $return_array = Tools::ssv2Array($node->server);
-        $return_array['remark'] = ($emoji == 1
+        $return_array['remark'] = ($emoji == true
             ? Tools::addEmoji($node->name)
             : $node->name);
         $return_array['address'] = $return_array['add'];
@@ -416,28 +618,37 @@ class URL
         $return_array['passwd'] = $user->passwd;
         $return_array['protocol'] = 'origin';
         $return_array['protocol_param'] = '';
-        $return_array['obfs'] = 'v2ray';
-        if ($return_array['tls'] == 'tls' && $return_array['net'] == 'ws') {
-            $return_array['obfs_param'] = ('mode=ws;security=tls;path=' . $return_array['path'] .
-                ';host=' . $return_array['host']);
+        $return_array['path'] = '';
+        if ($return_array['net'] == 'obfs') {
+            $return_array['obfs_param'] = $user->getMuMd5();
         } else {
-            $return_array['obfs_param'] = ('mode=ws;security=none;path=' . $return_array['path'] .
-                ';host=' . $return_array['host']);
+            $return_array['obfs'] = 'v2ray';
+            if ($return_array['tls'] == 'tls' && $return_array['net'] == 'ws') {
+                $return_array['obfs_param'] = ('mode=ws;security=tls;path=' . $return_array['path'] .
+                    ';host=' . $return_array['host']);
+            } else {
+                $return_array['obfs_param'] = ('mode=ws;security=none;path=' . $return_array['path'] .
+                    ';host=' . $return_array['host']);
+            }
+            $return_array['path'] = ($return_array['path'] . '?redirect=' . $user->getMuMd5());
         }
-        $return_array['path'] = ($return_array['path'] . '?redirect=' . $user->getMuMd5());
         $return_array['class'] = $node->node_class;
         $return_array['group'] = Config::get('appName');
+        $return_array['type'] = 'ss';
+        $return_array['ratio'] = $node->traffic_rate;
 
         return $return_array;
     }
 
-    public static function getV2Url($user, $node, $arrout = 0, $emoji = 0)
+    public static function getV2Url($user, $node, $arrout = 0, $emoji = false)
     {
         $item = Tools::v2Array($node->server);
         $item['v'] = '2';
-        $item['ps'] = ($emoji == 1
+        $item['type'] = 'vmess';
+        $item['ps'] = ($emoji == true
             ? Tools::addEmoji($node->name)
             : $node->name);
+        $item['remark'] = $item['ps'];
         $item['id'] = $user->getUuid();
         $item['class'] = $node->node_class;
         if ($arrout == 0) {
@@ -449,7 +660,7 @@ class URL
         return $item;
     }
 
-    public static function getAllVMessUrl($user, $arrout = 0, $emoji = 0)
+    public static function getAllVMessUrl($user, $arrout = 0, $emoji = false)
     {
         if ($user->is_admin) {
             $nodes = Node::where(
@@ -556,21 +767,34 @@ class URL
                 $server['remarks'] = $node->name . ' - 单多' . $server['port'] . '端口';
                 $server['encryption'] = $user->method;
                 $server['password'] = $user->passwd;
-                $server['plugin'] = 'v2ray';
-                $server['path'] = ($server['path'] . '?redirect=' . $user->getMuMd5());
-                if ($server['tls'] == 'tls' && $server['net'] == 'ws') {
-                    $server['obfs_param'] = ('mode=ws;security=tls;path=' . $server['path'] .
-                        ';host=' . $server['host']);
+                $server['path'] = '';
+                $plugin_options = '';
+                if ($server['net'] == 'obfs') {
+                    $array_all['plugin'] = 'simple-obfs'; //目前只支持这个
+                    if (strpos($server['obfs'], 'http') != false) {
+                        $plugin_options .= 'obfs=http';
+                    }
+                    if (strpos($server['obfs'], 'tls') != false) {
+                        $plugin_options .= 'obfs=tls';
+                    }
+                    $plugin_options .= ';obfs-host=' . $user->getMuMd5();
                 } else {
-                    $server['obfs_param'] = ('mode=ws;security=none;path=' . $server['path'] .
-                        ';host=' . $server['host']);
+                    $server['plugin'] = 'v2ray';
+                    $server['path'] = ($server['path'] . '?redirect=' . $user->getMuMd5());
+                    if ($server['tls'] == 'tls' && $server['net'] == 'ws') {
+                        $plugin_options .= ('mode=ws;security=tls;path=' . $server['path'] .
+                            ';host=' . $server['host']);
+                    } else {
+                        $plugin_options .= ('mode=ws;security=none;path=' . $server['path'] .
+                            ';host=' . $server['host']);
+                    }
                 }
+                $server['plugin_options'] = $plugin_options;
                 $array_server[] = $server;
                 $server_index++;
                 continue;
             } else {
-                $node_server = explode(';', $node->server);
-                $server['server'] = $node_server[0];
+                $server['server'] = $node->getServer();
             }
             $server['id'] = $server_index;
             //判断是否是中转起源节点
@@ -692,7 +916,7 @@ class URL
     * obfs
     * obfs_param
     */
-    public static function getItem($user, $node, $mu_port = 0, $relay_rule_id = 0, $is_ss = 0, $emoji = 0)
+    public static function getItem($user, $node, $mu_port = 0, $relay_rule_id = 0, $is_ss = 0, $emoji = false)
     {
         $relay_rule = Relay::where('id', $relay_rule_id)->where(
             static function ($query) use ($user) {
@@ -719,29 +943,28 @@ class URL
                 return;
             }
             $user = self::getSSConnectInfo($user);
+            $return_array['type'] = 'ss';
         } else {
             if (!self::SSRCanConnect($user)) {
                 return;
             }
             $user = self::getSSRConnectInfo($user);
+            $return_array['type'] = 'ssr';
         }
-        $return_array['address'] = $node->server;
+        $return_array['address'] = $node->getServer();
         $return_array['port'] = $user->port;
         $return_array['protocol'] = $user->protocol;
         $return_array['protocol_param'] = $user->protocol_param;
         $return_array['obfs'] = $user->obfs;
         $return_array['obfs_param'] = $user->obfs_param;
-        if (strpos($node->server, ';') !== false) {
+        if ($mu_port != 0 && strpos($node->server, ';') !== false) {
             $node_tmp = Tools::OutPort($node->server, $node->name, $mu_port);
-            if ($mu_port != 0) {
-                $return_array['port'] = $node_tmp['port'];
-                $node_name = $node_tmp['name'];
-            }
-            $return_array['address'] = $node_tmp['address'];
+            $return_array['port'] = $node_tmp['port'];
+            $node_name = $node_tmp['name'];
         }
         $return_array['passwd'] = $user->passwd;
         $return_array['method'] = $user->method;
-        $return_array['remark'] = ($emoji == 1
+        $return_array['remark'] = ($emoji == true
             ? Tools::addEmoji($node_name)
             : $node_name);
         $return_array['class'] = $node->node_class;

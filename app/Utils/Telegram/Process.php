@@ -12,15 +12,18 @@ class Process
     public static function index()
     {
         try {
-            $bot = new Api(Config::get('new_telegram_token'));
+            $bot = new Api(Config::get('telegram_token'));
             $bot->addCommands(
                 [
-                    Commands\HelpCommand::class,
-                    Commands\StartCommand::class,
-                    Commands\PingCommand::class,
-                    Commands\CheckinCommand::class,
                     Commands\MyCommand::class,
+                    Commands\HelpCommand::class,
+                    Commands\InfoCommand::class,
+                    Commands\MenuCommand::class,
+                    Commands\PingCommand::class,
+                    Commands\StartCommand::class,
                     Commands\UnbindCommand::class,
+                    Commands\CheckinCommand::class,
+                    Commands\SetuserCommand::class,
                 ]
             );
             $update = $bot->commandsHandler(true);
@@ -39,9 +42,9 @@ class Process
         }
     }
 
-    public static function getUser($telegram_id)
+    public static function getUser($value, $method = 'telegram_id')
     {
-        return User::where('telegram_id', $telegram_id)->first();
+        return User::where($method, $value)->first();
     }
 
     /**
@@ -54,7 +57,7 @@ class Process
      */
     public static function SendPost($Method, $Params)
     {
-        $URL = 'https://api.telegram.org/bot' . Config::get('new_telegram_token') . '/' . $Method;
+        $URL = 'https://api.telegram.org/bot' . Config::get('telegram_token') . '/' . $Method;
         $POSTData = json_encode($Params);
         $C = curl_init();
         curl_setopt($C, CURLOPT_URL, $URL);

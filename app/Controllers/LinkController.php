@@ -4,19 +4,13 @@
 
 namespace App\Controllers;
 
-use App\Models\Link;
-use App\Models\User;
-use App\Models\UserSubscribeLog;
-use App\Models\Smartline;
-use App\Utils\ConfRender;
-use App\Utils\Tools;
-use App\Utils\URL;
-use App\Services\Config;
-use App\Services\AppsProfiles;
+use App\Models\{Link, User, UserSubscribeLog, Smartline};
+use App\Utils\{URL, Tools, AppURI, ConfRender};
+use App\Services\{Config, AppsProfiles};
 use Ramsey\Uuid\Uuid;
 
 /**
- *  HomeController
+ *  LinkController
  */
 class LinkController extends BaseController
 {
@@ -72,23 +66,41 @@ class LinkController extends BaseController
 
         // 筛选节点部分
         $find = false;
-        $Rule = [];
+        $Rule['type'] = (isset($opts['type']) ? trim($opts['type']) : 'all');
+        $Rule['is_mu'] = (Config::get('mergeSub') === true ? 1 : 0);
+        if (isset($opts['mu'])) $Rule['is_mu'] = (int) $opts['mu'];
+
         if (isset($opts['class'])) {
-            $Rule['content']['class'] = (int) urldecode(trim($opts['class']));
+            $class = trim(urldecode($opts['class']));
+            $Rule['content']['class'] = array_map(
+                function($item) {
+                    return (int) $item;
+                },
+                explode('+', $class)
+            );
             $find = true;
         }
         if (isset($opts['noclass'])) {
-            $Rule['content']['noclass'] = (int) urldecode(trim($opts['noclass']));
+            $noclass = trim(urldecode($opts['noclass']));
+            $Rule['content']['noclass'] = array_map(
+                function($item) {
+                    return (int) $item;
+                },
+                explode('+', $noclass)
+            );
             $find = true;
         }
         if (isset($opts['regex'])) {
-            $Rule['content']['regex'] = urldecode(trim($opts['regex']));
+            $Rule['content']['regex'] = trim(urldecode($opts['regex']));
             $find = true;
         }
 
-        $emoji = ((isset($opts['emoji']) && $opts['emoji'] == '1') || Config::get('add_emoji_to_node_name') === true
-            ? 1
-            : 0);
+        // Emoji
+        $Rule['emoji'] = Config::get('add_emoji_to_node_name');
+        if (isset($opts['emoji'])) $Rule['emoji'] = (bool) $opts['emoji'];
+        // 显示流量以及到期时间等
+        $Rule['extend'] = Config::get('enable_sub_extend');
+        if (isset($opts['extend'])) $Rule['extend'] = (bool) $opts['extend'];
 
         // 兼容原版
         if (isset($opts['mu'])) {
@@ -113,14 +125,16 @@ class LinkController extends BaseController
         }
 
         $sub_type_array = [
-            'clash' => ['filename' => 'config.yaml', 'class' => 'Clash'],
-            'kitsunebi' => ['filename' => 'Kitsunebi.txt', 'class' => 'Kitsunebi'],
-            'ssd' => ['filename' => 'SSD.txt', 'class' => 'SSD'],
-            'surge' => ['filename' => 'Surge.conf', 'class' => 'Surge'],
-            'surfboard' => ['filename' => 'Surfboard.conf', 'class' => 'Surfboard'],
-            'shadowrocket' => ['filename' => 'Shadowrocket.txt', 'class' => 'Shadowrocket'],
-            'quantumult' => ['filename' => 'Quantumult.conf', 'class' => 'Quantumult'],
-            'sub' => ['filename' => 'node.txt', 'class' => 'Sub']
+            'list'          => ['filename' => 'node.txt', 'class' => 'Lists'],
+            'clash'         => ['filename' => 'config.yaml', 'class' => 'Clash'],
+            'kitsunebi'     => ['filename' => 'Kitsunebi.txt', 'class' => 'Kitsunebi'],
+            'ssd'           => ['filename' => 'SSD.txt', 'class' => 'SSD'],
+            'surge'         => ['filename' => 'Surge.conf', 'class' => 'Surge'],
+            'surfboard'     => ['filename' => 'Surfboard.conf', 'class' => 'Surfboard'],
+            'shadowrocket'  => ['filename' => 'Shadowrocket.txt', 'class' => 'Shadowrocket'],
+            'quantumult'    => ['filename' => 'Quantumult.conf', 'class' => 'Quantumult'],
+            'quantumultx'   => ['filename' => 'QuantumultX.conf', 'class' => 'QuantumultX'],
+            'sub'           => ['filename' => 'node.txt', 'class' => 'Sub']
         ];
 
         // 订阅类型
@@ -137,68 +151,68 @@ class LinkController extends BaseController
         $path = ($request->getUri()->getPath() . $request->getUri()->getQuery());
 
         $getBody = '';
+        
         foreach ($sub_type_array as $key => $value) {
-            if ($key != 'sub' && isset($opts[$key])) {
-                $int = (int) $opts[$key];
-                $class = ('get' . $value['class']);
-                if ($int >= 1) {
+            if (isset($opts[$key])) {
+                $query_value = $opts[$key];
+                if ($query_value != '0' && $query_value != '') {
+                    // 兼容代码开始
+                    if ($key == 'sub' && $query_value > 6) {
+                        $query_value = 1;
+                    }
+                    if ($key == 'surge' && $query_value == '1') {
+                        $value['class'] = 'Lists';
+                        $query_value = 'surge';
+                    }
+                    if ($key == 'quantumult' && $query_value == '1') {
+                        $value['class'] = 'Lists';
+                        $query_value = 'quantumult';
+                    }
+                    // 兼容代码结束
                     $Cache = false;
+                    $class = ('get' . $value['class']);
                     if (Config::get('enable_sub_cache') === true) {
                         $Cache = true;
                         $content = self::getSubscribeCache($user, $path);
                         if ($content === false) {
                             $Cache = false;
-                            $content = self::$class($user, $int, $opts, $Rule, $find, $emoji);
+                            $content = self::$class($user, $query_value, $opts, $Rule, $find);
                         }
                         self::SubscribeCache($user, $path, $content);
                     } else {
-                        $content = self::$class($user, $int, $opts, $Rule, $find, $emoji);
+                        $content = self::$class($user, $query_value, $opts, $Rule, $find);
+                    }
+                    if ($sub_type_array[$key]['class'] != $value['class']) {
+                        $filename = $sub_type_array[$query_value]['filename'];
+                    } else {
+                        $filename = $value['filename'];
+                    }
+                    if (in_array($query_value, ['ssa'])) {
+                        $filename = 'node_' . time() . '.json';
+                    }
+                    if (in_array($query_value, ['clash', 'clashr'])) {
+                        $filename = $sub_type_array['clash']['filename'];
                     }
                     $getBody = self::getBody(
                         $user,
                         $response,
                         $content,
-                        $value['filename'],
+                        $filename,
                         $Cache
                     );
-                    $subscribe_type = $value['class'];
+                    if ($key == 'sub') {
+                        $subscribe_type = $sub_int_type[$query_value];
+                    } else {
+                        $subscribe_type = ($value['class'] == 'Lists' ? ucfirst($query_value) : $value['class']);
+                    }
                     break;
                 }
                 continue;
             }
-            if ($key != 'sub') {
-                continue;
-            }
-            $int = (!isset($opts[$key])
-                ? 1
-                : (int) $opts[$key]);
-            if ($int == 0 || $int >= 6) {
-                $int = 1;
-            }
-            $subscribe_type = $sub_int_type[$int];
-            $Cache = false;
-            if (Config::get('enable_sub_cache') === true) {
-                $Cache = true;
-                $content = self::getSubscribeCache($user, $path);
-                if ($content === false) {
-                    $Cache = false;
-                    $content = self::getSub($user, $int, $opts, $Rule, $find, $emoji);
-                }
-                self::SubscribeCache($user, $path, $content);
-            } else {
-                $content = self::getSub($user, $int, $opts, $Rule, $find, $emoji);
-            }
-            $getBody = self::getBody(
-                $user,
-                $response,
-                $content,
-                $value['filename'],
-                $Cache
-            );
         }
 
         // 记录订阅日志
-        if (Config::get('subscribeLog') === true) {
+        if (Config::get('subscribeLog') === true && $getBody != '') {
             self::Subscribe_log($user, $subscribe_type, $request->getHeaderLine('User-Agent'));
         }
 
@@ -227,7 +241,7 @@ class LinkController extends BaseController
             unlink($user_path_hash);
             return false;
         }
-        
+
         return file_get_contents($user_path_hash);
     }
 
@@ -242,6 +256,16 @@ class LinkController extends BaseController
     {
         $user_path = (BASE_PATH . '/storage/SubscribeCache/' . $user->id . '/');
         if (!is_dir($user_path)) mkdir($user_path);
+        $number = 0;
+        $files = glob($user_path . '*');
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                $number++;
+            }
+        }
+        if ($number >= Config::get('sub_cache_max_quantity') + 1) {
+            Tools::delDirAndFile($user_path);
+        }
         $user_path_hash = ($user_path . Uuid::uuid3(Uuid::NAMESPACE_DNS, $path)->toString());
         $file = fopen($user_path_hash, 'wb');
         fwrite($file, $content);
@@ -318,7 +342,7 @@ class LinkController extends BaseController
      * @param object $user 用户
      * @param int    $int  当前用户访问的订阅类型
      *
-     * @return string
+     * @return array
      */
     public static function getSubinfo($user, $int = 0)
     {
@@ -337,19 +361,22 @@ class LinkController extends BaseController
             // apps
             'ssd'             => '?ssd=1',
             'clash'           => '?clash=1',
+            'clash_provider'  => '?list=clash',
             'clashr'          => '?clash=2',
+            'clashr_provider' => '?list=clashr',
             'surge'           => '?surge=' . $int,
-            'surge_node'      => '?surge=1',
+            'surge_node'      => '?list=surge',
             'surge2'          => '?surge=2',
             'surge3'          => '?surge=3',
             'surge4'          => '?surge=4',
             'surfboard'       => '?surfboard=1',
             'quantumult'      => '?quantumult=' . $int,
-            'quantumult_v2'   => '?quantumult=1',
+            'quantumult_v2'   => '?list=quantumult',
             'quantumult_sub'  => '?quantumult=2',
             'quantumult_conf' => '?quantumult=3',
-            'shadowrocket'    => '?shadowrocket=1',
-            'kitsunebi'       => '?kitsunebi=1'
+            'quantumultx'     => '?list=quantumultx',
+            'shadowrocket'    => '?list=shadowrocket',
+            'kitsunebi'       => '?list=kitsunebi'
         ];
 
         return array_map(
@@ -358,6 +385,146 @@ class LinkController extends BaseController
             },
             $return_info
         );
+    }
+
+    public static function getListItem($item, $list)
+    {
+        $return = null;
+        switch ($list) {
+            case 'ssa':
+                $return = AppURI::getSSJSON($item);
+                break;
+            case 'surge':
+                $return = AppURI::getSurgeURI($item, 3);
+                break;
+            case 'clash':
+                $return = AppURI::getClashURI($item);
+                break;
+            case 'clashr':
+                $return = AppURI::getClashURI($item, true);
+                break;
+            case 'kitsunebi':
+                $return = AppURI::getKitsunebiURI($item);
+                break;
+            case 'quantumult':
+                $return = AppURI::getQuantumultURI($item, true);
+                break;
+            case 'quantumultx':
+                $return = AppURI::getQuantumultXURI($item);
+                break;
+            case 'shadowrocket':
+                $return = AppURI::getShadowrocketURI($item);
+                break;
+        }
+        return $return;
+    }
+
+    public static function getLists($user, $list, $opts, $Rule, $find)
+    {
+        $list = strtolower($list);
+        if ($list == 'ssd') {
+            return self::getSSD($user, 1, $opts, $Rule, false);
+        }
+        if ($list == 'ssa') {
+            $Rule['type'] = 'ss';
+        }
+        if ($list == 'quantumult') {
+            $Rule['type'] = 'vmess';
+        }
+        $items = URL::getNew_AllItems($user, $Rule);
+        $return = [];
+        if ($Rule['extend'] === true) {
+            switch ($list) {
+                case 'ssa':
+                case 'clash':
+                case 'clashr':
+                    $return = array_merge($return, self::getListExtend($user, $list));
+                    break;
+                default:
+                    $return[] = implode(PHP_EOL, self::getListExtend($user, $list));
+                    break;
+            }
+        }
+        foreach ($items as $item) {
+            $out = self::getListItem($item, $list);
+            if ($out != null) {
+                $return[] = $out;
+            }
+        }
+        switch ($list) {
+            case 'ssa':
+                return json_encode($return, 320);
+                break;
+            case 'clash':
+            case 'clashr':
+                return \Symfony\Component\Yaml\Yaml::dump(['proxies' => $return], 4, 2);
+            case 'kitsunebi':
+            case 'quantumult':
+            case 'shadowrocket':
+                return base64_encode(implode(PHP_EOL, $return));
+            default:
+                return implode(PHP_EOL, $return);
+        }        
+    }
+
+    public static function getListExtend($user, $list)
+    {
+        $return = [];
+        $info_array = (count(Config::get('sub_message')) != 0 ? (array) Config::get('sub_message') : []);
+        if (strtotime($user->expire_in) > time()) {
+            if ($user->transfer_enable == 0) {
+                $unusedTraffic = '剩余流量：0';
+            } else {
+                $unusedTraffic = '剩余流量：' . $user->unusedTraffic();
+            }
+            $expire_in = '过期时间：';
+            if ($user->class_expire != '1989-06-04 00:05:00') {
+                $userClassExpire = explode(' ', $user->class_expire);
+                $expire_in .= $userClassExpire[0];
+            } else {
+                $expire_in .= '无限期';
+            }
+        } else {
+            $unusedTraffic  = '账户已过期，请续费后使用';
+            $expire_in      = '账户已过期，请续费后使用';
+        }
+        if (!in_array($list, ['quantumult', 'quantumultx', 'shadowrocket'])) {
+            $info_array[] = $unusedTraffic;
+            $info_array[] = $expire_in;
+        }
+        $baseUrl = explode('//', Config::get('baseUrl'))[1];
+        $Extend_ss = [
+            'remark'    => '',
+            'type'      => 'ss',
+            'address'   => $baseUrl,
+            'port'      => 10086,
+            'method'    => 'chacha20-ietf-poly1305',
+            'passwd'    => 'WWW.GOV.CN',
+            'obfs'      => 'plain'
+        ];
+        $Extend_VMess = [
+            'remark'    => '',
+            'type'      => 'vmess',
+            'add'       => $baseUrl,
+            'port'      => 10086,
+            'id'        => '2661b5f8-8062-34a5-9371-a44313a75b6b',
+            'alterId'   => 0,
+            'net'       => 'tcp'
+        ];
+        if ($list == 'shadowrocket') {
+            $return[] = ('STATUS=' . $unusedTraffic . '.♥.' . $expire_in . PHP_EOL . 'REMARKS=' . Config::get('appName'));
+        }
+        foreach ($info_array as $remark) {
+            $Extend_ss['remark']    = $remark;
+            $Extend_VMess['remark'] = $remark;
+            if (in_array($list, ['kitsunebi', 'quantumult'])) {
+                $out = self::getListItem($Extend_VMess, $list);
+            } else {
+                $out = self::getListItem($Extend_ss, $list);
+            }
+            if ($out !== null) $return[] = $out;
+        }
+        return $return;
     }
 
     /**
@@ -371,83 +538,21 @@ class LinkController extends BaseController
      *
      * @return string
      */
-    public static function getSurge($user, $surge, $opts, $Rule, $find, $emoji)
+    public static function getSurge($user, int $surge, $opts, $Rule, $find)
     {
+        if ($surge == 1) {
+            return self::getLists($user, 'surge', $opts, $Rule, $find);
+        }
         $subInfo = self::getSubinfo($user, $surge);
         $userapiUrl = $subInfo['surge'];
-        $source = (isset($opts['source']) && $opts['source'] != ''
-            ? true
-            : false);
+        $source = (isset($opts['source']) && $opts['source'] != '' ? true : false);
+        if ($surge == 2) $Rule['type'] = 'ss';
+        $items = URL::getNew_AllItems($user, $Rule);
         $All_Proxy = '';
-        $items = array_merge(
-            URL::getAllItems($user, 0, 1, $emoji),
-            URL::getAllItems($user, 1, 1, $emoji)
-        );
-        if (!$source && $surge == 1) {
-            foreach ($items as $item) {
-                if ($find) {
-                    $item = ConfController::getMatchProxy($item, $Rule);
-                    if ($item !== null) {
-                        $All_Proxy .= ($item['remark'] . ' = ss, ' . $item['address'] . ', ' . $item['port'] . ', encrypt-method=' . $item['method'] . ', password=' . $item['passwd'] . URL::getSurgeObfs($item) . ', udp-relay=true' . PHP_EOL);
-                    }
-                } else {
-                    $All_Proxy .= ($item['remark'] . ' = ss, ' . $item['address'] . ', ' . $item['port'] . ', encrypt-method=' . $item['method'] . ', password=' . $item['passwd'] . URL::getSurgeObfs($item) . ', udp-relay=true' . PHP_EOL);
-                }
-            }
-
-            // v2
-            $v2_items = URL::getAllVMessUrl($user, 1, $emoji);
-            foreach ($v2_items as $item) {
-                if (!in_array($item['net'], ['ws', 'tcp'])) {
-                    continue;
-                }
-                $item['remark'] = $item['ps'];
-                $tls = ($item['tls'] == 'tls'
-                    ? ', tls=true'
-                    : '');
-                $ws = ($item['net'] == 'ws'
-                    ? ', ws=true, ws-path=' . $item['path'] . ', ws-headers=host:' . $item['host']
-                    : '');
-                $Proxy = $item['ps'] . ' = vmess, ' . $item['add'] . ', ' . $item['port'] . ', username = ' . $item['id'] . $ws . $tls . PHP_EOL;
-                if ($find) {
-                    $item = ConfController::getMatchProxy($item, $Rule);
-                    if ($item !== null) {
-                        $All_Proxy .= $Proxy;
-                    }
-                } else {
-                    $All_Proxy .= $Proxy;
-                }
-            }
-
-            return $All_Proxy;
-        }
         foreach ($items as $item) {
-            if (in_array($surge, array(3, 4))) {
-                $All_Proxy .= ($item['remark'] . ' = ss, ' . $item['address'] . ', ' . $item['port'] . ', encrypt-method=' . $item['method'] . ', password=' . $item['passwd'] . URL::getSurgeObfs($item) . ', udp-relay=true' . PHP_EOL);
-            } else {
-                $All_Proxy .= ($item['remark'] . ' = custom, ' . $item['address'] . ', ' . $item['port'] . ', ' . $item['method'] . ', ' . $item['passwd'] . ', https://raw.githubusercontent.com/lhie1/Rules/master/SSEncrypt.module' . URL::getSurgeObfs($item) . PHP_EOL);
-            }
+            $URI = AppURI::getSurgeURI($item, $surge) . PHP_EOL;
+            if ($item !== null) $All_Proxy .= $URI;
         }
-
-        if ($surge == 4) {
-            // v2
-            $v2_items = URL::getAllVMessUrl($user, 1, $emoji);
-            foreach ($v2_items as $item) {
-                if (!in_array($item['net'], ['ws', 'tcp'])) {
-                    continue;
-                }
-                $tls = ($item['tls'] == 'tls'
-                    ? ', tls=true'
-                    : '');
-                $ws = ($item['net'] == 'ws'
-                    ? ', ws=true, ws-path=' . $item['path'] . ', ws-headers=host:' . $item['host']
-                    : '');
-                $All_Proxy .= $item['ps'] . ' = vmess, ' . $item['add'] . ', ' . $item['port'] . ', username = ' . $item['id'] . $ws . $tls . PHP_EOL;
-                $item['remark'] = $item['ps'];
-                $items[] = $item;
-            }
-        }
-
         if ($source) {
             $SourceURL = trim(urldecode($opts['source']));
             // 远程规则仅支持 github 以及 gitlab
@@ -500,102 +605,82 @@ class LinkController extends BaseController
      *
      * @return string
      */
-    public static function getQuantumult($user, $quantumult, $opts, $Rule, $find, $emoji)
+    public static function getQuantumult($user, $quantumult, $opts, $Rule, $find)
     {
-        $subInfo = self::getSubinfo($user, 0);
-        $proxys = [];
-        $groups = [];
-        $subUrl = '';
-        if ($quantumult == 2) {
-            $subUrl = $subInfo['link'];
-        } else {
-            $back_china_name = '';
-            $v2ray_group = '';
-            $v2ray_name = '';
-            $v2rays = URL::getAllVMessUrl($user, 1, $emoji);
-            foreach ($v2rays as $v2ray) {
-                if ($v2ray['net'] == 'kcp' || $v2ray['net'] == 'quic') {
-                    continue;
-                }
-                if (strpos($v2ray['ps'], '回国') or strpos($v2ray['ps'], 'China')) {
-                    $back_china_name .= "\n" . $v2ray['ps'];
-                } else {
-                    $v2ray_name .= "\n" . $v2ray['ps'];
-                }
-                $v2ray_tls = ', over-tls=false, certificate=1';
-                if (($v2ray['net'] == 'tcp' && $v2ray['tls'] == 'tls') || $v2ray['tls'] == 'tls') {
-                    $v2ray_tls = ', over-tls=true, tls-host=' . $v2ray['add'] . ', certificate=1';
-                }
-                $v2ray_obfs = '';
-                if ($v2ray['net'] == 'ws' || $v2ray['net'] == 'http') {
-                    $v2ray_obfs = ', obfs=' . $v2ray['net'] . ', obfs-path="' . $v2ray['path'] . '", obfs-header="Host: ' . $v2ray['host'] . '[Rr][Nn]User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 18_0_0 like Mac OS X) AppleWebKit/888.8.88 (KHTML, like Gecko) Mobile/6666666"';
-                }
-                if ($quantumult == 1) {
-                    $v2ray_group .= 'vmess://' . base64_encode($v2ray['ps'] . ' = vmess, ' . $v2ray['add'] . ', ' . $v2ray['port'] . ', chacha20-ietf-poly1305, "' . $v2ray['id'] . '", group=' . Config::get('appName') . '_v2' . $v2ray_tls . $v2ray_obfs) . PHP_EOL;
-                } else {
-                    $v2ray_group .= $v2ray['ps'] . ' = vmess, ' . $v2ray['add'] . ', ' . $v2ray['port'] . ', chacha20-ietf-poly1305, "' . $v2ray['id'] . '", group=' . Config::get('appName') . '_v2' . $v2ray_tls . $v2ray_obfs . PHP_EOL;
-                }
-            }
-            if ($quantumult == 1) {
-                $extend = isset($opts['extend']) ? $opts['extend'] : 0;
-                $v2ray_group .= ($extend == 0
-                    ? ''
-                    : URL::getUserInfo($user, 'quantumult_v2', 0) . PHP_EOL);
-                return base64_encode($v2ray_group);
-            } elseif ($quantumult == 3) {
-                $ss_group = '';
-                $ss_name = '';
-                $items = array_merge(URL::getAllItems($user, 0, 1, $emoji), URL::getAllItems($user, 1, 1, $emoji));
-                foreach ($items as $item) {
-                    $ss_group .= $item['remark'] . ' = shadowsocks, ' . $item['address'] . ', ' . $item['port'] . ', ' . $item['method'] . ', "' . $item['passwd'] . '", upstream-proxy=false, upstream-proxy-auth=false' . URL::getSurgeObfs($item) . ', group=' . Config::get('appName') . PHP_EOL;
-                    if (strpos($item['remark'], '回国') or strpos($item['remark'], 'China')) {
-                        $back_china_name .= "\n" . $item['remark'];
-                    } else {
-                        $ss_name .= "\n" . $item['remark'];
-                    }
-                }
-                $ssr_group = '';
-                $ssr_name = '';
-                $ssrs = array_merge(URL::getAllItems($user, 0, 0, $emoji), URL::getAllItems($user, 1, 0, $emoji));
-                foreach ($ssrs as $item) {
-                    $ssr_group .= $item['remark'] . ' = shadowsocksr, ' . $item['address'] . ', ' . $item['port'] . ', ' . $item['method'] . ', "' . $item['passwd'] . '", protocol=' . $item['protocol'] . ', protocol_param=' . $item['protocol_param'] . ', obfs=' . $item['obfs'] . ', obfs_param="' . $item['obfs_param'] . '", group=' . Config::get('appName') . PHP_EOL;
-                    if (strpos($item['remark'], '回国') or strpos($item['remark'], 'China')) {
-                        $back_china_name .= "\n" . $item['remark'];
-                    } else {
-                        $ssr_name .= "\n" . $item['remark'];
-                    }
-                }
-                $quan_proxy_group = base64_encode("🍃 Proxy  :  static, 🏃 Auto\n🏃 Auto\n🚀 Direct\n" . $ss_name . $ssr_name . $v2ray_name);
-                $quan_auto_group = base64_encode("🏃 Auto  :  auto\n" . $ss_name . $ssr_name . $v2ray_name);
-                $quan_domestic_group = base64_encode("🍂 Domestic  :  static, 🚀 Direct\n🚀 Direct\n🍃 Proxy\n" . $back_china_name);
-                $quan_others_group = base64_encode("☁️ Others  :   static, 🍃 Proxy\n🚀 Direct\n🍃 Proxy");
-                $quan_apple_group = base64_encode("🍎 Only  :  static, 🚀 Direct\n🚀 Direct\n🍃 Proxy");
-                $quan_direct_group = base64_encode("🚀 Direct : static, DIRECT\nDIRECT");
-                $proxys = [
-                    'ss' => $ss_group,
-                    'ssr' => $ssr_group,
-                    'v2ray' => $v2ray_group,
+        $emoji = $Rule['emoji'];
+        switch ($quantumult) {
+            case 2:
+                $subUrl = self::getSubinfo($user, 0);
+                $str = [
+                    '[SERVER]',
+                    '',
+                    '[SOURCE]',
+                    Config::get('appName') . ', server ,' . $subUrl['ssr'] . ', false, true, false',
+                    Config::get('appName') . '_ss, server ,' . $subUrl['ss'] . ', false, true, false',
+                    Config::get('appName') . '_VMess, server ,' . $subUrl['quantumult_v2'] . ', false, true, false',
+                    'Hackl0us Rules, filter, https://raw.githubusercontent.com/Hackl0us/Surge-Rule-Snippets/master/LAZY_RULES/Quantumult.conf, true',
+                    '',
+                    '[DNS]',
+                    'system, 119.29.29.29, 223.6.6.6, 114.114.114.114',
+                    '',
+                    '[STATE]',
+                    'STATE,AUTO'
                 ];
-                $groups = [
-                    'proxy_group' => $quan_proxy_group,
-                    'auto_group' => $quan_auto_group,
-                    'domestic_group' => $quan_domestic_group,
-                    'others_group' => $quan_others_group,
-                    'direct_group' => $quan_direct_group,
-                    'apple_group' => $quan_apple_group,
-                ];
-            } else {
-                return '悟空别闹...';
+                return implode(PHP_EOL, $str);
+                break;
+            case 3:
+                $items = URL::getNew_AllItems($user, $Rule);
+                break;
+            default:
+                return self::getLists($user, 'quantumult', $opts, $Rule, $find);
+                break;
+        }
+
+        $All_Proxy          = '';
+        $All_Proxy_name     = '';
+        $BackChina_name     = '';
+        foreach ($items as $item) {
+            $out = AppURI::getQuantumultURI($item);
+            if ($out !== null) {
+                $All_Proxy .= $out . PHP_EOL;
+                if (strpos($item['remark'], '回国') || strpos($item['remark'], 'China')) {
+                    $BackChina_name .= "\n" . $item['remark'];
+                } else {
+                    $All_Proxy_name .= "\n" . $item['remark'];
+                }
             }
         }
+        $ProxyGroups = [
+            'proxy_group'       => base64_encode("🍃 Proxy  :  static, 🏃 Auto\n🏃 Auto\n🚀 Direct\n" . $All_Proxy_name),
+            'domestic_group'    => base64_encode("🍂 Domestic  :  static, 🚀 Direct\n🚀 Direct\n🍃 Proxy\n" . $BackChina_name),
+            'others_group'      => base64_encode("☁️ Others  :   static, 🍃 Proxy\n🚀 Direct\n🍃 Proxy"),
+            'direct_group'      => base64_encode("🚀 Direct : static, DIRECT\nDIRECT"),
+            'apple_group'       => base64_encode("🍎 Only  :  static, 🚀 Direct\n🚀 Direct\n🍃 Proxy"),
+            'auto_group'        => base64_encode("🏃 Auto  :  auto\n" . $All_Proxy_name),
+        ];
         $render = ConfRender::getTemplateRender();
-        $render->assign('user', $user)
-            ->assign('subUrl', $subUrl)
-            ->assign('proxys', $proxys)
-            ->assign('groups', $groups)
-            ->assign('quantumult', $quantumult)
-            ->assign('appName', Config::get('appName'));
+        $render->assign('All_Proxy', $All_Proxy)->assign('ProxyGroups', $ProxyGroups);
+
         return $render->fetch('quantumult.tpl');
+    }
+
+    /**
+     * QuantumultX 配置
+     *
+     * @param object $user        用户
+     * @param int    $quantumultx 订阅类型
+     * @param array  $Rule        节点筛选规则
+     * @param bool   $find        是否筛选节点
+     *
+     * @return string
+     */
+    public static function getQuantumultX($user, $quantumultx, $opts, $Rule, $find)
+    {
+        switch ($quantumultx) {
+            default:
+                return self::getLists($user, 'quantumultx', $opts, $Rule, $find);
+                break;
+        }
     }
 
     /**
@@ -606,16 +691,19 @@ class LinkController extends BaseController
      *
      * @return string
      */
-    public static function getSurfboard($user, $surfboard, $opts, $Rule, $find, $emoji)
+    public static function getSurfboard($user, $surfboard, $opts, $Rule, $find)
     {
         $subInfo = self::getSubinfo($user, 0);
         $userapiUrl = $subInfo['surfboard'];
         $All_Proxy = '';
-        $items = array_merge(URL::getAllItems($user, 0, 1, $emoji), URL::getAllItems($user, 1, 1, $emoji));
+        $Rule['type'] = 'ss';
+        $items = URL::getNew_AllItems($user, $Rule);
         foreach ($items as $item) {
-            $All_Proxy .= ($item['remark'] . ' = custom, ' . $item['address'] . ', ' . $item['port'] . ', ' . $item['method'] . ', ' . $item['passwd'] . ', https://raw.githubusercontent.com/lhie1/Rules/master/SSEncrypt.module' . URL::getSurgeObfs($item) . PHP_EOL);
+            $out = AppURI::getSurfboardURI($item);
+            if ($out !== null) {
+                $All_Proxy .= $out . PHP_EOL;
+            }
         }
-
         if (isset($opts['profiles']) && in_array((string) $opts['profiles'], array_keys(AppsProfiles::Surfboard()))) {
             $Profiles = (string) trim($opts['profiles']);
             $userapiUrl .= ('&profiles=' . $Profiles);
@@ -644,131 +732,22 @@ class LinkController extends BaseController
      *
      * @return string
      */
-    public static function getClash($user, $clash, $opts, $Rule, $find, $emoji)
+    public static function getClash($user, $clash, $opts, $Rule, $find)
     {
         $subInfo = self::getSubinfo($user, 0);
         $userapiUrl = $subInfo['clash'];
+        $ssr_support = ($clash == 2 ? true : false);
+        $items = URL::getNew_AllItems($user, $Rule);
         $Proxys = [];
-        // ss
-        $items = array_merge(
-            URL::getAllItems($user, 0, 1, $emoji),
-            URL::getAllItems($user, 1, 1, $emoji),
-            URL::getAllV2RayPluginItems($user, $emoji)
-        );
         foreach ($items as $item) {
-            $sss = [
-                'name' => $item['remark'],
-                'type' => 'ss',
-                'server' => $item['address'],
-                'port' => $item['port'],
-                'cipher' => $item['method'],
-                'password' => $item['passwd'],
-                'udp' => true
-            ];
-            if ($item['obfs'] != 'plain') {
-                switch ($item['obfs']) {
-                    case 'simple_obfs_http':
-                        $sss['plugin'] = 'obfs';
-                        $sss['plugin-opts']['mode'] = 'http';
-                        break;
-                    case 'simple_obfs_tls':
-                        $sss['plugin'] = 'obfs';
-                        $sss['plugin-opts']['mode'] = 'tls';
-                        break;
-                    case 'v2ray':
-                        $sss['plugin'] = 'v2ray-plugin';
-                        $sss['plugin-opts']['mode'] = 'websocket';
-                        if (strpos($item['obfs_param'], 'security=tls')) {
-                            $sss['plugin-opts']['tls'] = true;
-                        }
-                        $sss['plugin-opts']['host'] = $item['host'];
-                        $sss['plugin-opts']['path'] = $item['path'];
-                        $sss['plugin-opts']['mux'] = true;
-                        break;
-                }
-                if ($item['obfs'] != 'v2ray') {
-                    if ($item['obfs_param'] != '') {
-                        $sss['plugin-opts']['host'] = $item['obfs_param'];
-                    } else {
-                        $sss['plugin-opts']['host'] = 'windowsupdate.windows.com';
-                    }
-                }
-            }
-            if (isset($opts['source']) && $opts['source'] != '') {
-                $sss['class'] = $item['class'];
-            }
-            $Proxys[] = $sss;
-        }
-        // v2
-        $items = URL::getAllVMessUrl($user, 1, $emoji);
-        foreach ($items as $item) {
-            if (in_array($item['net'], array('kcp', 'http', 'quic'))) {
-                continue;
-            }
-            $v2rays = [
-                'name' => $item['ps'],
-                'type' => 'vmess',
-                'server' => $item['add'],
-                'port' => $item['port'],
-                'uuid' => $item['id'],
-                'alterId' => $item['aid'],
-                'cipher' => 'auto',
-                'udp' => true
-            ];
-            if ($item['net'] == 'ws') {
-                $v2rays['network'] = 'ws';
-                $v2rays['ws-path'] = $item['path'];
-                if ($item['tls'] == 'tls') {
-                    $v2rays['tls'] = true;
-                }
-                if ($item['host'] != '') {
-                    $v2rays['ws-headers']['Host'] = $item['host'];
-                }
-            } elseif (($item['net'] == 'tcp' && $item['tls'] == 'tls') || $item['net'] == 'tls') {
-                $v2rays['tls'] = true;
-            }
-            if (isset($opts['source']) && $opts['source'] != '') {
-                $v2rays['class'] = $item['class'];
-            }
-            $Proxys[] = $v2rays;
-        }
-
-        if ($clash == 2) {
-            // ssr
-            $items = array_merge(
-                URL::getAllItems($user, 0, 0, $emoji),
-                URL::getAllItems($user, 1, 0, $emoji)
-            );
-            foreach ($items as $item) {
-                // 不支持的
-                if (
-                    in_array($item['method'], ['rc4-md5-6', 'des-ede3-cfb', 'xsalsa20', 'none'])
-                    ||
-                    in_array($item['protocol'], array_merge(Config::getSupportParam('allow_none_protocol'), ['verify_deflate']))
-                    ||
-                    in_array($item['obfs'], ['tls1.2_ticket_fastauth'])
-                ) {
-                    continue;
-                }
-                $ssr = [
-                    'name' => $item['remark'],
-                    'type' => 'ssr',
-                    'server' => $item['address'],
-                    'port' => $item['port'],
-                    'cipher' => $item['method'],
-                    'password' => $item['passwd'],
-                    'protocol' => $item['protocol'],
-                    'protocolparam' => $item['protocol_param'],
-                    'obfs' => $item['obfs'],
-                    'obfsparam' => $item['obfs_param']
-                ];
+            $Proxy = AppURI::getClashURI($item, $ssr_support);
+            if ($item !== null) {
                 if (isset($opts['source']) && $opts['source'] != '') {
-                    $ssr['class'] = $item['class'];
+                    $Proxy['class'] = $item['class'];
                 }
-                $Proxys[] = $ssr;
+                $Proxys[] = $Proxy;
             }
         }
-
         if (isset($opts['source']) && $opts['source'] != '') {
             $SourceURL = trim(urldecode($opts['source']));
             // 远程规则仅支持 github 以及 gitlab
@@ -819,9 +798,51 @@ class LinkController extends BaseController
      *
      * @return string
      */
-    public static function getSSD($user, $ssd, $opts, $Rule, $find, $emoji)
+    public static function getSSD($user, $ssd, $opts, $Rule, $find)
     {
-        return URL::getAllSSDUrl($user);
+        if (!URL::SSCanConnect($user)) {
+            return null;
+        }
+        $array_all                  = [];
+        $array_all['airport']       = Config::get('appName');
+        $array_all['port']          = $user->port;
+        $array_all['encryption']    = $user->method;
+        $array_all['password']      = $user->passwd;
+        $array_all['traffic_used']  = Tools::flowToGB($user->u + $user->d);
+        $array_all['traffic_total'] = Tools::flowToGB($user->transfer_enable);
+        $array_all['expiry']        = $user->class_expire;
+        $array_all['url']           = self::getSubinfo($user, 0)['ssd'];
+        $plugin_options             = '';
+        if (strpos($user->obfs, 'http') != false) {
+            $plugin_options = 'obfs=http';
+        }
+        if (strpos($user->obfs, 'tls') != false) {
+            $plugin_options = 'obfs=tls';
+        }
+        if ($plugin_options != '') {
+            $array_all['plugin'] = 'simple-obfs';
+            $array_all['plugin_options'] = $plugin_options;
+            if ($user->obfs_param != '') {
+                $array_all['plugin_options'] .= ';obfs-host=' . $user->obfs_param;
+            }
+        }
+        $array_server = [];
+        $server_index = 1;
+        $Rule['type'] = 'ss';
+        $nodes = URL::getNew_AllItems($user, $Rule);
+        foreach ($nodes as $item) {
+            if ($item['type'] != 'ss') continue;
+            $server = AppURI::getSSDURI($item);
+            if ($server !== null) {
+                $server['id'] = $server_index;
+                $array_server[] = $server;
+                $server_index++;
+            }
+        }
+        $array_all['servers'] = $array_server;
+        $json_all = json_encode($array_all, 320);
+
+        return 'ssd://' . base64_encode($json_all);
     }
 
     /**
@@ -834,9 +855,12 @@ class LinkController extends BaseController
      *
      * @return string
      */
-    public static function getShadowrocket($user, $shadowrocket, $opts, $Rule, $find, $emoji)
+    public static function getShadowrocket($user, $shadowrocket, $opts, $Rule, $find)
     {
-        $emoji = 0; // Shadowrocket 自带 emoji
+        $Rule['emoji'] = false; // Shadowrocket 自带 emoji
+        return self::getLists($user, 'shadowrocket', $opts, $Rule, $find);
+
+        $emoji = false; // Shadowrocket 自带 emoji
 
         $return = '';
         if (strtotime($user->expire_in) > time()) {
@@ -863,99 +887,28 @@ class LinkController extends BaseController
         $extend = isset($opts['extend']) ? $opts['extend'] : 0;
         $return .= ($extend == 0 ? '' : URL::getUserInfo($user, 'ssr', 0) . PHP_EOL);
 
-        // v2ray
-        $items = URL::getAllVMessUrl($user, 1);
-        foreach ($items as $item) {
-            if ($item['net'] == 'kcp') {
-                continue;
-            }
-            if ($find) {
-                $item['remark'] = $item['ps'];
-                $item = ConfController::getMatchProxy($item, $Rule);
-                if ($item === null) {
-                    continue;
-                }
-            }
-            $obfs = '';
-            if ($item['net'] == 'ws') {
-                $obfs .= ($item['host'] != ''
-                    ? ('&obfsParam=' . $item['host'] .
-                        '&path=' . $item['path'] . '&obfs=websocket')
-                    : ('&obfsParam=' . $item['add'] .
-                        '&path=' . $item['path'] . '&obfs=websocket'));
-                $obfs .= ($item['tls'] == 'tls'
-                    ? '&tls=1'
-                    : '&tls=0');
-            } elseif (($item['net'] == 'tcp' && $item['tls'] == 'tls') || $item['net'] == 'tls') {
-                $obfs .= '&obfs=none';
-                $obfs .= ($item['tls'] == 'tls'
-                    ? '&tls=1'
-                    : '&tls=0');
-            } else {
-                $obfs .= '&obfs=none';
-            }
-            $return .= ('vmess://' . Tools::base64_url_encode(
-                'chacha20-poly1305:' . $item['id'] .
-                    '@' . $item['add'] . ':' . $item['port']
-            ) . '?remarks=' . rawurlencode($item['ps'])
-                . $obfs . PHP_EOL);
-        }
-
-        // 减少因为加密协议混淆同时支持 ss & ssr 而导致订阅出现大量重复节点
         if (in_array($user->method, Config::getSupportParam('ss_aead_method')) || in_array($user->obfs, Config::getSupportParam('ss_obfs'))) {
-            // ss
-            $items = URL::getAllItems($user, 0, 1);
-            foreach ($items as $item) {
-                if ($find) {
-                    $item = ConfController::getMatchProxy($item, $Rule);
-                    if ($item === null) {
-                        continue;
-                    }
-                }
-                if (in_array($item['obfs'], Config::getSupportParam('ss_obfs'))) {
-                    $return .= (URL::getItemUrl($item, 1) . PHP_EOL);
-                } elseif ($item['obfs'] == 'plain') {
-                    $return .= (URL::getItemUrl($item, 2) . PHP_EOL);
-                }
-            }
+            // 减少因为加密协议混淆同时支持 ss & ssr 而导致订阅出现大量重复节点
+            $items = array_merge(
+                URL::getAllItems($user, 0, 1),
+                URL::getAllItems($user, 1, 1),
+                URL::getAllV2RayPluginItems($user),
+                URL::getAllVMessUrl($user, 1)
+            );
+        } else {
+            $items = array_merge(
+                URL::getAllItems($user, 1, 1),
+                URL::getAllV2RayPluginItems($user),
+                URL::getAllVMessUrl($user, 1)
+            );
         }
-
-        // ss_mu
-        $items = array_merge(
-            URL::getAllItems($user, 1, 1),
-            URL::getAllV2RayPluginItems($user)
-        );
         foreach ($items as $item) {
             if ($find) {
                 $item = ConfController::getMatchProxy($item, $Rule);
-                if ($item === null) {
-                    continue;
-                }
+                if ($item === null) continue;
             }
-            //  V2Ray-Plugin
-            if ($item['obfs'] == 'v2ray') {
-                $v2rayplugin = [
-                    'address' => $item['address'],
-                    'port' => (string) $item['port'],
-                    'path' => $item['path'],
-                    'host' => $item['host'],
-                    'mode' => 'websocket',
-                ];
-                $v2rayplugin['tls'] = $item['tls'] == 'tls' ? true : false;
-                $return .= ('ss://' . Tools::base64_url_encode(
-                    $item['method'] . ':' . $item['passwd'] .
-                        '@' . $item['address'] . ':' . $item['port']
-                ) . '?v2ray-plugin=' . base64_encode(
-                    json_encode($v2rayplugin)
-                ) . '#' . rawurlencode($item['remark']) . PHP_EOL);
-            }
-            // obfs
-            if (in_array($item['obfs'], Config::getSupportParam('ss_obfs'))) {
-                $return .= (URL::getItemUrl($item, 1) . PHP_EOL);
-            }
-            // ss 单端口不存在混淆为 plain
+            $return .= AppURI::getShadowrocketURI($item) . PHP_EOL;
         }
-
         // ssr
         $return .= URL::get_NewAllUrl($user, 0, 0, $Rule, $find) . PHP_EOL;
 
@@ -972,72 +925,9 @@ class LinkController extends BaseController
      *
      * @return string
      */
-    public static function getKitsunebi($user, $kitsunebi, $opts, $Rule, $find, $emoji)
+    public static function getKitsunebi($user, $kitsunebi, $opts, $Rule, $find)
     {
-        $return = '';
-
-        // 账户到期时间以及流量信息
-        $extend = isset($opts['extend']) ? (int) $opts['extend'] : 0;
-        $return .= $extend == 0 ? '' : URL::getUserInfo($user, 'ss', 1) . PHP_EOL;
-
-        // v2ray
-        $items = URL::getAllVMessUrl($user, 1, $emoji);
-        foreach ($items as $item) {
-            if ($find) {
-                $item['remark'] = $item['ps'];
-                $item = ConfController::getMatchProxy($item, $Rule);
-                if ($item === null) {
-                    continue;
-                }
-            }
-            $network = ($item['net'] == 'tls'
-                ? '&network=tcp'
-                : ('&network=' . $item['net']));
-            $protocol = '';
-            switch ($item['net']) {
-                case 'kcp':
-                    $protocol .= ('&kcpheader=' . $item['type'] .
-                        '&uplinkcapacity=1' .
-                        '&downlinkcapacity=6');
-                    break;
-                case 'ws':
-                    $protocol .= ('&wspath=' . $item['path'] .
-                        '&wsHost=' . $item['host']);
-                    break;
-            }
-            $tls = ($item['tls'] == 'tls' || $item['net'] == 'tls'
-                ? '&tls=1'
-                : '&tls=0');
-            $mux = '&mux=1&muxConcurrency=8';
-            $return .= ('vmess://' . base64_encode(
-                'auto:' . $item['id'] .
-                    '@' . $item['add'] . ':' . $item['port']
-            ) . '?remark=' . rawurlencode($item['ps']) .
-                $network . $protocol .
-                '&aid=' . $item['aid']
-                . $tls . $mux . PHP_EOL);
-        }
-
-        // ss
-        if (URL::SSCanConnect($user) && !in_array($user->obfs, ['simple_obfs_http', 'simple_obfs_tls'])) {
-            $user = URL::getSSConnectInfo($user);
-            $user->obfs = 'plain';
-            $items = URL::getAllItems($user, 0, 1, $emoji);
-            if ($find) {
-                foreach ($items as $item) {
-                    $item = ConfController::getMatchProxy($item, $Rule);
-                    if ($item !== null) {
-                        $return .= (URL::getItemUrl($item, 2) . PHP_EOL);
-                    }
-                }
-            } else {
-                foreach ($items as $item) {
-                    $return .= (URL::getItemUrl($item, 2) . PHP_EOL);
-                }
-            }
-        }
-
-        return base64_encode($return);
+        return self::getLists($user, 'kitsunebi', $opts, $Rule, $find);
     }
 
     public static function getSSPcConf($user)
@@ -1045,7 +935,8 @@ class LinkController extends BaseController
         $proxy = [];
         $items = array_merge(
             URL::getAllItems($user, 0, 1, 0),
-            URL::getAllItems($user, 1, 1, 0)
+            URL::getAllItems($user, 1, 1, 0),
+            URL::getAllV2RayPluginItems($user)
         );
         foreach ($items as $item) {
             $proxy_plugin = '';
@@ -1200,7 +1091,8 @@ class LinkController extends BaseController
         $proxy = [];
         $items = array_merge(
             URL::getAllItems($user, 0, 1, 0),
-            URL::getAllItems($user, 1, 1, 0)
+            URL::getAllItems($user, 1, 1, 0),
+            URL::getAllV2RayPluginItems($user)
         );
         foreach ($items as $item) {
             $proxy_plugin = '';
@@ -1330,8 +1222,9 @@ class LinkController extends BaseController
      *
      * @return string
      */
-    public static function getSub($user, $sub, $opts, $Rule, $find, $emoji)
+    public static function getSub($user, $sub, $opts, $Rule, $find)
     {
+        $emoji = $Rule['emoji'];
         $extend = isset($opts['extend']) ? $opts['extend'] : 0;
         $traffic_class_expire = 1;
         $getV2rayPlugin = 1;

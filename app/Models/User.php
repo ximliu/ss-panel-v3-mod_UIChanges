@@ -12,6 +12,7 @@ use App\Services\Config;
 use App\Utils\GA;
 use App\Utils\QQWry;
 use App\Utils\Radius;
+use App\Utils\URL;
 use Ramsey\Uuid\Uuid;
 use App\Models\DetectLog;
 use App\Models\DetectBanLog;
@@ -559,5 +560,248 @@ class User extends Model
         }
 
         return $return;
+    }
+
+    /**
+     * 更新加密方式
+     */
+    public function setMethod($method)
+    {
+        $return = [
+            'ok'  => true,
+            'msg' => '设置成功，您可自由选用两种客户端来进行连接。'
+        ];
+        if ($method == '') {
+            $return['ok']   = false;
+            $return['msg']  = '非法输入';
+            return $return;
+        }
+        if (!Tools::is_param_validate('method', $method)) {
+            $return['ok']   = false;
+            $return['msg']  = '加密无效';
+            return $return;
+        }
+        $this->method = $method;
+        if (!Tools::checkNoneProtocol($this)) {
+            $return['ok']   = false;
+            $return['msg']  = '系统检测到您将要设置的加密方式为 none ，但您的协议并不在以下协议【' . implode(',', Config::getSupportParam('allow_none_protocol')) . '】之内，请您先修改您的协议，再来修改此处设置。';
+            return $return;
+        }
+        if (!URL::SSCanConnect($this) && !URL::SSRCanConnect($this)) {
+            $return['ok']   = false;
+            $return['msg']  = '您这样设置之后，就没有客户端能连接上了，所以系统拒绝了您的设置，请您检查您的设置之后再进行操作。';
+            return $return;
+        }
+        $this->updateMethod($method);
+        if (!URL::SSCanConnect($this)) {
+            $return['ok']   = true;
+            $return['msg']  = '设置成功，但您目前的协议，混淆，加密方式设置会导致 Shadowsocks 原版客户端无法连接，请您自行更换到 ShadowsocksR 客户端。';
+        }
+        if (!URL::SSRCanConnect($this)) {
+            $return['ok']   = true;
+            $return['msg']  = '设置成功，但您目前的协议，混淆，加密方式设置会导致 ShadowsocksR 客户端无法连接，请您自行更换到 Shadowsocks 客户端。';
+        }
+        return $return;
+    }
+
+    /**
+     * 更新协议
+     */
+    public function setProtocol($Protocol)
+    {
+        $return = [
+            'ok'  => true,
+            'msg' => '设置成功，您可自由选用客户端来连接。'
+        ];
+        if ($Protocol == '') {
+            $return['ok']   = false;
+            $return['msg']  = '非法输入';
+            return $return;
+        }
+        if (!Tools::is_param_validate('protocol', $Protocol)) {
+            $return['ok']   = false;
+            $return['msg']  = '协议无效';
+            return $return;
+        }
+        $this->protocol = $Protocol;
+        if (!Tools::checkNoneProtocol($this)) {
+            $return['ok']   = false;
+            $return['msg']  = '系统检测到您目前的加密方式为 none ，但您将要设置为的协议并不在以下协议【' . implode(',', Config::getSupportParam('allow_none_protocol')) . '】之内，请您先修改您的加密方式，再来修改此处设置。';
+            return $return;
+        }
+        if (!URL::SSCanConnect($this) && !URL::SSRCanConnect($this)) {
+            $return['ok']   = false;
+            $return['msg']  = '您这样设置之后，就没有客户端能连接上了，所以系统拒绝了您的设置，请您检查您的设置之后再进行操作。';
+            return $return;
+        }
+        $this->save();
+        $this->cleanSubCache();
+        if (!URL::SSCanConnect($this)) {
+            $return['ok']   = true;
+            $return['msg']  = '设置成功，但您目前的协议，混淆，加密方式设置会导致 Shadowsocks 原版客户端无法连接，请您自行更换到 ShadowsocksR 客户端。';
+        }
+        if (!URL::SSRCanConnect($this)) {
+            $return['ok']   = true;
+            $return['msg']  = '设置成功，但您目前的协议，混淆，加密方式设置会导致 ShadowsocksR 客户端无法连接，请您自行更换到 Shadowsocks 客户端。';
+        }
+        return $return;
+    }
+
+    /**
+     * 更新混淆
+     */
+    public function setObfs($Obfs)
+    {
+        $return = [
+            'ok'  => true,
+            'msg' => '设置成功，您可自由选用客户端来连接。'
+        ];
+        if ($Obfs == '') {
+            $return['ok']   = false;
+            $return['msg']  = '非法输入';
+            return $return;
+        }
+        if (!Tools::is_param_validate('obfs', $Obfs)) {
+            $return['ok']   = false;
+            $return['msg']  = '混淆无效';
+            return $return;
+        }
+        $this->obfs = $Obfs;
+        if (!URL::SSCanConnect($this) && !URL::SSRCanConnect($this)) {
+            $return['ok']   = false;
+            $return['msg']  = '您这样设置之后，就没有客户端能连接上了，所以系统拒绝了您的设置，请您检查您的设置之后再进行操作。';
+            return $return;
+        }
+        $this->save();
+        $this->cleanSubCache();
+        if (!URL::SSCanConnect($this)) {
+            $return['ok']   = true;
+            $return['msg']  = '设置成功，但您目前的协议，混淆，加密方式设置会导致 Shadowsocks 原版客户端无法连接，请您自行更换到 ShadowsocksR 客户端。';
+        }
+        if (!URL::SSRCanConnect($this)) {
+            $return['ok']   = true;
+            $return['msg']  = '设置成功，但您目前的协议，混淆，加密方式设置会导致 ShadowsocksR 客户端无法连接，请您自行更换到 Shadowsocks 客户端。';
+        }
+        return $return;
+    }
+
+    /**
+     * 解绑 Telegram
+     */
+    public function TelegramReset()
+    {
+        $return = [
+            'ok'  => true,
+            'msg' => '解绑成功.'
+        ];
+        $telegram_id = $this->telegram_id;
+        $this->telegram_id = 0;
+        if ($this->save()) {
+            if (
+                Config::get('enable_telegram') === true
+                &&
+                Config::get('group_bound_user') === true
+                &&
+                Config::get('unbind_kick_member') === true
+            ) {
+                \App\Utils\Telegram\Process::SendPost(
+                    'kickChatMember',
+                    [
+                        'chat_id'   => Config::get('telegram_chatid'),
+                        'user_id'   => $telegram_id,
+                    ]
+                );
+            }
+        } else {
+            $return = [
+                'ok'  => false,
+                'msg' => '解绑失败.'
+            ];
+        }
+
+        return $return;
+    }
+
+    /**
+     * 更新端口
+     */
+    public function setPort($Port)
+    {
+        $PortOccupied = User::pluck('port')->toArray();
+        if (in_array($Port, $PortOccupied) == true) {
+            return [
+                'ok'  => false,
+                'msg' => '端口已被占用'
+            ];
+        }
+        $origin_port    = $this->port;
+        $this->port     = $Port;
+        $relay_rules    = Relay::where('user_id', $this->id)->where('port', $origin_port)->get();
+        foreach ($relay_rules as $rule) {
+            $rule->port = $this->port;
+            $rule->save();
+        }
+        $this->save();
+        $this->cleanSubCache();
+        return [
+            'ok'  => true,
+            'msg' => $this->port
+        ];
+    }
+
+    /**
+     * 重置端口
+     */
+    public function ResetPort()
+    {
+        $price = Config::get('port_price');
+        if ($this->money < $price) {
+            return [
+                'ok'  => false,
+                'msg' => '余额不足'
+            ];
+        }
+        $this->money -= $price;
+        $Port = Tools::getAvPort();
+        $this->setPort($Port);
+        $this->save();
+        return [
+            'ok'  => true,
+            'msg' => $this->port
+        ];
+    }
+
+    /**
+     * 指定端口
+     */
+    public function SpecifyPort($Port)
+    {
+        $price = Config::get('port_price_specify');
+        if ($this->money < $price) {
+            return [
+                'ok'  => false,
+                'msg' => '余额不足'
+            ];
+        }
+        if ($Port < Config::get('min_port') || $Port > Config::get('max_port') || Tools::isInt($Port) == false) {
+            return [
+                'ok'  => false,
+                'msg' => '端口不在要求范围内'
+            ];
+        }
+        $PortOccupied = User::pluck('port')->toArray();
+        if (in_array($Port, $PortOccupied) == true) {
+            return [
+                'ok'  => false,
+                'msg' => '端口已被占用'
+            ];
+        }
+        $this->money -= $price;
+        $this->setPort($Port);
+        $this->save();
+        return [
+            'ok'  => true,
+            'msg' => '钦定成功'
+        ];
     }
 }

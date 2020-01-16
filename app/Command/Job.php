@@ -19,6 +19,7 @@ use App\Models\TelegramSession;
 use App\Models\EmailVerify;
 use App\Models\UserSubscribeLog;
 use App\Models\DetectBanLog;
+use App\Models\TelegramTasks;
 use App\Services\Config;
 use App\Services\Password;
 use App\Utils\DNSoverHTTPS;
@@ -302,7 +303,7 @@ class Job
                     $ips[$alive_ip->ip] = 1;
                     if ($user->node_connector < count($ips)) {
                         //暂时封禁
-                        $isDisconnect = Disconnect::where('id', '=', $alive_ip->ip)->where(
+                        $isDisconnect = Disconnect::where('ip', '=', $alive_ip->ip)->where(
                             'userid',
                             '=',
                             $user->id
@@ -809,6 +810,16 @@ class Job
             if ($user->enable == 1 && (strtotime($user->expire_in) > time() || strtotime($user->expire_in) < 644447105) && $user->transfer_enable > $user->u + $user->d) {
                 $sinuser->delete();
                 Radius::Add($user, $user->passwd);
+            }
+        }
+
+        if (Config::get('enable_telegram') === true) {
+            # 删除 tg 消息
+            $TelegramTasks = TelegramTasks::where('type', 1)->where('executetime', '<', time())->get();
+            foreach ($TelegramTasks as $Task) {
+                \App\Utils\Telegram\Process::SendPost('deleteMessage', ['chat_id' => $Task->chatid, 'message_id' => $Task->messageid]);
+                TelegramTasks::where('chatid', $Task->chatid)->where('type', '<>', 1)->where('messageid', $Task->messageid)->delete();
+                $Task->delete();
             }
         }
     }

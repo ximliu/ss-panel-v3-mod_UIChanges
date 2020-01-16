@@ -4,6 +4,8 @@ namespace App\Utils\Telegram\Commands;
 
 use App\Models\User;
 use App\Services\Config;
+use App\Utils\Telegram\Reply;
+use App\Utils\Telegram\TelegramTools;
 use Telegram\Bot\Actions;
 use Telegram\Bot\Commands\Command;
 
@@ -20,7 +22,7 @@ class MyCommand extends Command
     /**
      * @var string Command Description
      */
-    protected $description = '';
+    protected $description = '[群组/私聊] 我的个人信息.';
 
     /**
      * {@inheritdoc}
@@ -38,11 +40,17 @@ class MyCommand extends Command
 
         if ($ChatID < 0) {
             // 群组
-            if (Config::get('new_telegram_group_quiet') === true) {
+            if (Config::get('enable_delete_user_cmd') === true) {
+                TelegramTools::DeleteMessage([
+                    'chatid'      => $ChatID,
+                    'messageid'   => $MessageID,
+                ]);
+            }
+            if (Config::get('telegram_group_quiet') === true) {
                 // 群组中不回应
                 return;
             }
-            if ($ChatID != Config::get('new_telegram_group_chatid')) {
+            if ($ChatID != Config::get('telegram_chatid')) {
                 // 非我方群组
                 return;
             }
@@ -61,59 +69,53 @@ class MyCommand extends Command
         $User = User::where('telegram_id', $SendUser['id'])->first();
         if ($User == null) {
             // 回送信息
-            $this->replyWithMessage(
+            $response = $this->replyWithMessage(
                 [
-                    'text'       => '您未绑定本站账号，您可以进入网站的 **资料编辑**，在右下方绑定您的账号.',
-                    'parse_mode' => 'Markdown',
+                    'text'                  => Config::get('user_not_bind_reply'),
+                    'reply_to_message_id'   => $MessageID,
+                    'parse_mode'            => 'Markdown',
                 ]
             );
-            return;
-        }
-
-        if ($ChatID > 0) {
-            // 私人
-            self::Privacy($User, $SendUser, $ChatID, $Message, $MessageID);
         } else {
-            // 群组
-            self::Group($User, $SendUser, $ChatID, $Message, $MessageID);
+            if ($ChatID > 0) {
+                // 私人
+                $response = $this->triggerCommand('menu');
+            } else {
+                // 群组
+                $response = self::Group($User, $SendUser, $ChatID, $Message, $MessageID);
+            }
         }
+        // 消息删除任务
+        TelegramTools::DeleteMessage([
+            'chatid'      => $ChatID,
+            'messageid'   => $response->getMessageId(),
+        ]);
+        return $response;
     }
 
     public function Group($User, $SendUser, $ChatID, $Message, $MessageID)
     {
-        $text = [
-            '您当前的流量状况：',
-            '',
-            '今日已使用[' . $User->TodayusedTrafficPercent(). '%]：' . $User->TodayusedTraffic(),
-            '之前已使用[' . $User->LastusedTrafficPercent(). '%]：' . $User->LastusedTraffic(),
-            '流量约剩余[' . $User->unusedTrafficPercent(). '%]：' . $User->unusedTraffic(),
-        ];
-
+        $text = Reply::getUserTitle($User);
+        $text .= PHP_EOL . PHP_EOL;
+        $text .= Reply::getUserTrafficInfo($User);
         // 回送信息
-        $this->replyWithMessage(
+        return $this->replyWithMessage(
             [
-                'text'                  => implode(PHP_EOL, $text),
+                'text'                  => $text,
                 'parse_mode'            => 'Markdown',
                 'reply_to_message_id'   => $MessageID,
-            ]
-        );
-    }
-
-    public function Privacy($User, $SendUser, $ChatID, $Message, $MessageID)
-    {
-        $text = [
-            '您当前的流量状况：',
-            '',
-            '今日已使用[' . $User->TodayusedTrafficPercent(). '%]：' . $User->TodayusedTraffic(),
-            '之前已使用[' . $User->LastusedTrafficPercent(). '%]：' . $User->LastusedTraffic(),
-            '流量约剩余[' . $User->unusedTrafficPercent(). '%]：' . $User->unusedTraffic(),
-        ];
-
-        // 回送信息
-        $this->replyWithMessage(
-            [
-                'text'                  => implode(PHP_EOL, $text),
-                'parse_mode'            => 'Markdown',
+                'reply_markup'          => json_encode(
+                    [
+                        'inline_keyboard' => [
+                            [
+                                [
+                                    'text'          => '签到',
+                                    'callback_data' => 'user.checkin.' . $SendUser['id']
+                                ]
+                            ],
+                        ]
+                    ]
+                ),
             ]
         );
     }

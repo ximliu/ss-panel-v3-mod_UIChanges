@@ -20,7 +20,7 @@ class UnbindCommand extends Command
     /**
      * @var string Command Description
      */
-    protected $description = '';
+    protected $description = '[私聊] 解除账户绑定.';
 
     /**
      * {@inheritdoc}
@@ -55,8 +55,8 @@ class UnbindCommand extends Command
                 // 回送信息
                 $this->replyWithMessage(
                     [
-                        'text'       => '您未绑定本站账号，您可以进入网站的 **资料编辑**，在右下方绑定您的账号.',
-                        'parse_mode' => 'Markdown',
+                        'text'       => Config::get('user_not_bind_reply'),
+                        'parse_mode' => 'MarkdownV2',
                     ]
                 );
                 return;
@@ -66,17 +66,13 @@ class UnbindCommand extends Command
             $MessageText = trim($arguments);
 
             if ($MessageText == $User->email) {
-                $User->telegram_id = 0;
-                if ($User->save()) {
-                    $text = '解绑成功.';
-                } else {
-                    $text = '解绑失败.';
-                }
+                $temp = $User->TelegramReset();
+                $text = $temp['msg'];
                 // 回送信息
                 $this->replyWithMessage(
                     [
                         'text'          => $text,
-                        'parse_mode'    => 'Markdown',
+                        'parse_mode'    => 'MarkdownV2',
                     ]
                 );
                 return;
@@ -91,7 +87,7 @@ class UnbindCommand extends Command
             $this->replyWithMessage(
                 [
                     'text'                  => $text,
-                    'parse_mode'            => 'Markdown',
+                    'parse_mode'            => 'MarkdownV2',
                 ]
             );
         }

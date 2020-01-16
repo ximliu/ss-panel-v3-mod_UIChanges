@@ -5,6 +5,7 @@ namespace App\Utils\Telegram\Commands;
 use App\Models\User;
 use App\Services\Config;
 use App\Utils\TelegramSessionManager;
+use App\Utils\Telegram\Process;
 use Telegram\Bot\Actions;
 use Telegram\Bot\Commands\Command;
 
@@ -21,7 +22,7 @@ class StartCommand extends Command
     /**
      * @var string Command Description
      */
-    protected $description = 'Start Command to get you started';
+    protected $description = '[群组/私聊] Bot 初始命令.';
 
     /**
      * {@inheritdoc}
@@ -30,7 +31,7 @@ class StartCommand extends Command
     {
         $Update = $this->getUpdate();
         $Message = $Update->getMessage();
-        
+
         // 消息会话 ID
         $ChatID = $Message->getChat()->getId();
 
@@ -84,7 +85,7 @@ class StartCommand extends Command
         } else {
             // 群组
 
-            if (Config::get('new_telegram_group_quiet') === true) {
+            if (Config::get('telegram_group_quiet') === true) {
                 // 群组中不回应
                 return;
             }
