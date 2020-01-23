@@ -37,6 +37,7 @@ $_ENV['checkNodeIp'] = true; //是否webapi验证节点ip
 // 可用于为用户推送最新地址等信息，尽可能简短且数量不宜太多
 $_ENV['sub_message']       = [];
 $_ENV['enable_sub_extend'] = true;      // 是否开启订阅中默认显示流量剩余以及账户到期时间以及 sub_message 中的信息
+$_ENV['disable_sub_mu_port'] = false;   // 将订阅中单端口的信息去除
 
 //邮件设置--------------------------------------------------------------------------------------------
 $_ENV['mailDriver'] = 'none';	//发送邮件方式：none / mailgun / smtp / sendgrid
@@ -143,6 +144,7 @@ $_ENV['finance_public'] = true;			//财务报告是否向群公开
 $_ENV['enable_welcome_message'] = true;	//机器人发送欢迎消息
 
 # Telegram BOT
+$_ENV['use_new_telegram_bot']       = true;         //是否使用新的 Telegram Bot
 $_ENV['enable_telegram']            = false;        //是否开启Telegram Bot
 $_ENV['telegram_token']             = '';           //Telegram Bot 的 Token，跟 Father Bot 申请
 $_ENV['telegram_bot']               = '';           //Telegram Bot 用户名

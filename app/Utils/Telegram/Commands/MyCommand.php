@@ -98,6 +98,8 @@ class MyCommand extends Command
         $text = Reply::getUserTitle($User);
         $text .= PHP_EOL . PHP_EOL;
         $text .= Reply::getUserTrafficInfo($User);
+        $text .= PHP_EOL;
+        $text .= '流量重置时间：' . $User->valid_use_loop();
         // 回送信息
         return $this->replyWithMessage(
             [
@@ -109,7 +111,7 @@ class MyCommand extends Command
                         'inline_keyboard' => [
                             [
                                 [
-                                    'text'          => '签到',
+                                    'text'          => (!$User->isAbleToCheckin() ? '已签到' : '签到'),
                                     'callback_data' => 'user.checkin.' . $SendUser['id']
                                 ]
                             ],

@@ -704,7 +704,7 @@ class User extends Model
                 &&
                 Config::get('unbind_kick_member') === true
             ) {
-                \App\Utils\Telegram\Process::SendPost(
+                \App\Utils\Telegram\TelegramTools::SendPost(
                     'kickChatMember',
                     [
                         'chat_id'   => Config::get('telegram_chatid'),
@@ -803,5 +803,24 @@ class User extends Model
             'ok'  => true,
             'msg' => '钦定成功'
         ];
+    }
+
+    public function valid_use_loop()
+    {
+        $boughts = Bought::where('userid', $this->id)->orderBy('id', 'desc')->get();
+        $data = [];
+        foreach ($boughts as $bought) {
+            $shop = $bought->shop();
+            if ($shop != null && $bought->valid()) {
+                $data[] = $bought->reset_time();
+            }
+        }
+        if (count($data) == 0) {
+            return '未购买套餐.';
+        }
+        if (count($data) == 1) {
+            return $data[0];
+        }
+        return '多个有效套餐无法显示.';
     }
 }

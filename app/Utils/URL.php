@@ -465,43 +465,27 @@ class URL
      * 获取全部节点 Url
      *
      * @param object $user           用户
-     * @param int    $is_ss          是否 ss
-     * @param int    $getV2rayPlugin 是否获取 V2rayPlugin 节点
      * @param array  $Rule           节点筛选规则
-     * @param bool   $find           是否筛选节点
      *
      * @return string
      */
-    public static function get_NewAllUrl($user, $is_ss, $getV2rayPlugin, $Rule, $find, $emoji = false)
+    public static function get_NewAllUrl($user, $Rule)
     {
         $return_url = '';
         if (strtotime($user->expire_in) < time()) {
             return $return_url;
         }
-        $items = array_merge(
-            self::getAllItems($user, 0, $is_ss, $emoji),
-            self::getAllItems($user, 1, $is_ss, $emoji),
-            self::getAllV2RayPluginItems($user, $emoji)
-        );
-        if ($find) {
-            foreach ($items as $item) {
-                $item = ConfController::getMatchProxy($item, $Rule);
-                if ($item !== null) {
-                    if ($getV2rayPlugin === 0 && $item['obfs'] == 'v2ray') {
-                        continue;
-                    }
-                    $return_url .= self::getItemUrl($item, $is_ss) . PHP_EOL;
-                }
+        $items = URL::getNew_AllItems($user, $Rule);
+        foreach ($items as $item) {
+            if ($item['type'] == 'vmess') {
+                $out = LinkController::getListItem($item, 'v2rayn');
+            } else {
+                $out = LinkController::getListItem($item, $Rule['type']);
             }
-        } else {
-            foreach ($items as $item) {
-                if ($getV2rayPlugin === 0 && $item['obfs'] == 'v2ray') {
-                    continue;
-                }
-                $return_url .= self::getItemUrl($item, $is_ss) . PHP_EOL;
+            if ($out !== null) {
+                $return_url .= $out . PHP_EOL;
             }
         }
-
         return $return_url;
     }
 
@@ -689,6 +673,32 @@ class URL
                 ->orderBy('name')
                 ->get();
         }
+        # 增加中转配置，后台目前配置user=0的话是自由门直接中转
+        $tmp_nodes = array();
+        foreach($nodes as $node){
+            $tmp_nodes[]=$node;
+            if ($node->sort==12){
+                $relay_rule = Relay::where('source_node_id', $node->id)->where(
+                    static function ($query) use ($user) {
+                        $query->Where('user_id', '=',0);
+                    }
+                )->orderBy('priority', 'DESC')->orderBy('id')->first();
+                if ($relay_rule != null) {
+                    //是中转起源节点
+                    $tmp_node = $relay_rule->dist_node();
+                    $server = explode(';', $tmp_node->server);
+                    $source_server = Tools::v2Array($node->server);
+                    if (count($server)<6){
+                        $tmp_node->server.=str_repeat(";",6-count($server));
+                    }
+                    $tmp_node->server.="relayserver=".$source_server['add']."|"."outside_port=".$source_server['port'];
+                    $tmp_node->name = $node->name."=>".$tmp_node->name;
+                    $tmp_nodes[]=$tmp_node;
+                }
+
+            }
+        }
+        $nodes=$tmp_nodes;
         if ($arrout == 0) {
             $result = '';
             foreach ($nodes as $node) {
@@ -936,7 +946,7 @@ class URL
             $mu_user->obfs_param = $user->getMuMd5();
             $mu_user->protocol_param = $user->id . ':' . $user->passwd;
             $user = $mu_user;
-            $node_name .= ' - ' . $mu_port . ' 单端口';
+            $node_name .= (Config::get('disable_sub_mu_port') ? '' : ' - ' . $mu_port . ' 单端口');
         }
         if ($is_ss) {
             if (!self::SSCanConnect($user)) {
@@ -979,51 +989,5 @@ class URL
     public static function cloneUser($user)
     {
         return clone $user;
-    }
-
-    public static function getUserInfo($user, $type, $traffic_class_expire)
-    {
-        $return = '';
-
-        // 订阅信息
-        $info_array = (count(Config::get('sub_message')) != 0
-            ? (array) Config::get('sub_message')
-            : []);
-
-        if ($traffic_class_expire !== 0) {
-            // 用户账户及流量信息
-            if (strtotime($user->expire_in) > time()) {
-                if ($user->transfer_enable == 0) {
-                    $info_array[] = '剩余流量：0.00%';
-                } else {
-                    $info_array[] = '剩余流量：' . number_format(($user->transfer_enable - $user->u - $user->d) / $user->transfer_enable * 100, 2) . '% ' . $user->unusedTraffic();
-                }
-                $info_array[] = '过期时间：' . $user->class_expire;
-            } else {
-                $info_array[] = '账户已过期，请续费后使用';
-            }
-        }
-
-        $group_name = Config::get('appName');
-        foreach ($info_array as $item) {
-            switch ($type) {
-                case 'ss':
-                    $return .= 'ss://' . Tools::base64_url_encode('chacha20:breakwall') . '@www.google.com:10086' . '/?group=' . Tools::base64_url_encode($group_name) . '#' . rawurlencode($item) . PHP_EOL;
-                    break;
-                case 'ssr':
-                    $return .= 'ssr://' . Tools::base64_url_encode('www.google.com:10086:auth_chain_a:chacha20:tls1.2_ticket_auth:YnJlYWt3YWxs/?obfsparam=&protoparam=&remarks=' . Tools::base64_url_encode($item) . '&group=' . Tools::base64_url_encode($group_name)) . PHP_EOL;
-                    break;
-                case 'v2ray':
-                    $v2ray = ['v' => '2', 'ps' => $item, 'add' => 'www.google.com', 'port' => '10086', 'id' => '2661b5f8-8062-34a5-9371-a44313a75b6b', 'aid' => '2', 'net' => 'tcp', 'type' => 'none', 'host' => '', 'tls' => ''];
-                    $return .= 'vmess://' . base64_encode(json_encode($v2ray, JSON_UNESCAPED_UNICODE)) . PHP_EOL;
-                    break;
-                case 'quantumult_v2':
-                    $quantumult_v2 = base64_encode($item . ' = vmess, ' . 'www.google.com' . ', ' . '10086' . ', chacha20-ietf-poly1305, "2661b5f8-8062-34a5-9371-a44313a75b6b", group=' . $group_name . '_v2') . PHP_EOL;
-                    $return .= 'vmess://' . base64_encode($quantumult_v2) . PHP_EOL;
-                    break;
-            }
-        }
-
-        return $return;
     }
 }
