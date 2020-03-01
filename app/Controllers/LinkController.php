@@ -8,6 +8,7 @@ use App\Models\{Link, User, UserSubscribeLog, Smartline};
 use App\Utils\{URL, Tools, AppURI, ConfRender};
 use App\Services\{Config, AppsProfiles};
 use Ramsey\Uuid\Uuid;
+use voku\helper\AntiXSS;
 
 /**
  *  LinkController
@@ -314,6 +315,9 @@ class LinkController extends BaseController
                     'suffix'   => 'txt',
                     'class'    => 'Lists'
                 ];
+                if ($value !== null) {
+                    $return['class'] = 'Kitsunebi';
+                }
                 break;
             case 'surfboard':
                 $return = [
@@ -343,6 +347,9 @@ class LinkController extends BaseController
                     'suffix'   => 'txt',
                     'class'    => 'Lists'
                 ];
+                if ($value !== null) {
+                    $return['class'] = 'QuantumultX';
+                }
                 break;
             case 'shadowrocket':
                 $return = [
@@ -350,6 +357,9 @@ class LinkController extends BaseController
                     'suffix'   => 'txt',
                     'class'    => 'Lists'
                 ];
+                if ($value !== null) {
+                    $return['class'] = 'Shadowrocket';
+                }
                 break;
             case 'clash_provider':
                 $return = [
@@ -435,7 +445,8 @@ class LinkController extends BaseController
         $log->subscribe_type = $type;
         $log->request_ip = $_SERVER['REMOTE_ADDR'];
         $log->request_time = date('Y-m-d H:i:s');
-        $log->request_user_agent = $ua;
+        $antiXss = new AntiXSS();
+        $log->request_user_agent = $antiXss->xss_clean($ua);
         $log->save();
     }
 
@@ -554,6 +565,8 @@ class LinkController extends BaseController
                 $return = AppURI::getClashURI($item, true);
                 break;
             case 'v2rayn':
+                $item['ps'] = $item['remark'];
+                $item['type'] = $item['headerType'];
                 $return = 'vmess://' . base64_encode(json_encode($item, 320));
                 break;
             case 'kitsunebi':
@@ -652,24 +665,29 @@ class LinkController extends BaseController
             'address'   => $baseUrl,
             'port'      => 10086,
             'method'    => 'chacha20-ietf-poly1305',
-            'passwd'    => 'WWW.GOV.CN',
-            'obfs'      => 'plain'
+            'passwd'    => $user->passwd,
+            'obfs'      => 'plain',
+            'group'     => $_ENV['appName']
         ];
         $Extend_ssr = [
-            'remark'    => '',
-            'type'      => 'ssr',
-            'address'   => $baseUrl,
-            'port'      => 10086,
-            'method'    => 'chacha20-ietf',
-            'passwd'    => 'WWW.GOV.CN',
-            'obfs'      => 'plain'
+            'remark'         => '',
+            'type'           => 'ssr',
+            'address'        => $baseUrl,
+            'port'           => 10086,
+            'method'         => 'chacha20-ietf',
+            'passwd'         => $user->passwd,
+            'protocol'       => 'origin',
+            'protocol_param' => '',
+            'obfs'           => 'plain',
+            'obfs_param'     => '',
+            'group'          => $_ENV['appName']
         ];
         $Extend_VMess = [
             'remark'    => '',
             'type'      => 'vmess',
             'add'       => $baseUrl,
             'port'      => 10086,
-            'id'        => '2661b5f8-8062-34a5-9371-a44313a75b6b',
+            'id'        => $user->getUuid(),
             'alterId'   => 0,
             'net'       => 'tcp'
         ];
@@ -678,8 +696,9 @@ class LinkController extends BaseController
         }
         foreach ($info_array as $remark) {
             $Extend_ss['remark']    = $remark;
+            $Extend_ssr['remark']   = $remark;
             $Extend_VMess['remark'] = $remark;
-            if (in_array($list, ['kitsunebi', 'quantumult'])) {
+            if (in_array($list, ['kitsunebi', 'quantumult', 'v2rayn'])) {
                 $out = self::getListItem($Extend_VMess, $list);
             } elseif ($list == 'ssr') {
                 $out = self::getListItem($Extend_ssr, $list);
@@ -713,8 +732,8 @@ class LinkController extends BaseController
         $items = URL::getNew_AllItems($user, $Rule);
         $All_Proxy = '';
         foreach ($items as $item) {
-            $URI = AppURI::getSurgeURI($item, $surge) . PHP_EOL;
-            if ($item !== null) $All_Proxy .= $URI;
+            $URI = AppURI::getSurgeURI($item, $surge);
+            if ($URI !== null) $All_Proxy .= $URI . PHP_EOL;
         }
         if ($source) {
             $SourceURL = trim(urldecode($opts['source']));
@@ -902,7 +921,7 @@ class LinkController extends BaseController
         $Proxys = [];
         foreach ($items as $item) {
             $Proxy = AppURI::getClashURI($item, $ssr_support);
-            if ($item !== null) {
+            if ($Proxy !== null) {
                 if (isset($opts['source']) && $opts['source'] != '') {
                     $Proxy['class'] = $item['class'];
                 }
@@ -1313,6 +1332,112 @@ class LinkController extends BaseController
             ]
         ];
 
+        return json_encode($config, JSON_PRETTY_PRINT);
+    }
+
+    public static function getV2RayPcNConf($user)
+    {
+        $subUrl = self::getSubinfo($user, 0)['v2ray'];
+        $subId = Uuid::uuid3(Uuid::NAMESPACE_DNS, $subUrl)->toString();
+        $config = [
+            'inbound' => [
+                [
+                    'localPort'         => 10808,
+                    'protocol'          => 'socks',
+                    'udpEnabled'        => true,
+                    'sniffingEnabled'   => true,
+                ],
+            ],
+            'logEnabled'        => false,
+            'loglevel'          => 'warning',
+            'index'             => 0,
+            'vmess'             => [],
+            'muxEnabled'        => false,
+            'domainStrategy'    => 'IPIfNonMatch',
+            'routingMode'       => '3',
+            'useragent'         => [],
+            'userdirect'        => [],
+            'userblock'         => [],
+            'kcpItem'           => [
+                'mtu'               => 1350,
+                'tti'               => 50,
+                'uplinkCapacity'    => 12,
+                'downlinkCapacity'  => 100,
+                'congestion'        => false,
+                'readBufferSize'    => 2,
+                'writeBufferSize'   => 2,
+            ],
+            'listenerType'          => 0,
+            'urlGFWList'            => 'https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt',
+            'allowLANConn'          => false,
+            'enableStatistics'      => true,
+            'statisticsFreshRate'   => 2000,
+            'remoteDNS'             => '114.114.114.114,1.2.4.8,223.5.5.5,8,8,8,8',
+            'subItem'               => [
+                [
+                    'id'        => $subId,
+                    'remarks'   => $_ENV['appName'],
+                    'url'       => $subUrl,
+                    'enabled'   => true,
+                ],
+            ],
+            'uiItem' => [
+                'mainQRCodeWidth' => 600,
+            ],
+            'userPacRule' => []
+        ];
+        $Rule = [
+            'type'   => 'vmess',
+            'is_mu'  => ($_ENV['mergeSub'] === true ? 1 : 0),
+            'emoji'  => $_ENV['add_emoji_to_node_name'],
+            'extend' => $_ENV['enable_sub_extend'],
+        ];
+        $proxys = [];
+        $items = URL::getNew_AllItems($user, $Rule);
+        foreach ($items as $item) {
+            if (!in_array($item['net'], ['tcp', 'ws', 'kcp', 'h2'])) {
+                continue;
+            }
+            $proxy = [
+                'configVersion'     => 2,
+                'address'           => $item['add'],
+                'port'              => $item['port'],
+                'id'                => $item['id'],
+                'alterId'           => $item['aid'],
+                'security'          => 'auto',
+                'network'           => $item['net'],
+                'remarks'           => $item['remark'],
+                'headerType'        => 'none',
+                'requestHost'       => '',
+                'path'              => '',
+                'streamSecurity'    => '',
+                'allowInsecure'     => '',
+                'configType'        => 1,
+                'testResult'        => '',
+                'subid'             => $subId,
+            ];
+            switch ($item['net']) {
+                case 'h2':
+                    $proxy['requestHost'] = ($item['host'] != '' ? $item['host'] : $item['add']);
+                    $proxy['path']        = $item['path'];
+                    break;
+                case 'ws':
+                    $proxy['requestHost'] = ($item['host'] != '' ? $item['host'] : $item['add']);
+                    $proxy['path']        = $item['path'];
+                    break;
+                case 'kcp':
+                    $proxy['headerType']  = $item['type'];
+                    break;
+            }
+            if ($item['tls'] == 'tls') {
+                $proxy['streamSecurity'] = $item['tls'];
+                if ($item['verify_cert'] == false){
+                    $proxy['allowInsecure'] = 'true';
+                }
+            }
+            $proxys[] = $proxy;
+        }
+        $config['vmess'] = $proxys;
         return json_encode($config, JSON_PRETTY_PRINT);
     }
 

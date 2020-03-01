@@ -30,13 +30,18 @@ class HelpCommand extends Command
         $Update  = $this->getUpdate();
         $Message = $Update->getMessage();
         if ($Message->getChat()->getId() < 0) {
-            if (Config::get('enable_delete_user_cmd') === true) {
+            if ($_ENV['enable_delete_user_cmd'] === true) {
                 TelegramTools::DeleteMessage([
                     'chatid'      => $Message->getChat()->getId(),
                     'messageid'   => $Message->getMessageId(),
                 ]);
             }
-            if (Config::get('telegram_group_quiet') === true) {
+            if ($_ENV['telegram_group_quiet'] === true) {
+                return;
+            }
+        }
+        if (!preg_match('/^\/help\s?(@' . $_ENV['telegram_bot'] . ')?.*/i', $Message->getText())) {
+            if ($_ENV['help_any_command'] === false) {
                 return;
             }
         }
