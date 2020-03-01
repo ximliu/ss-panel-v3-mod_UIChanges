@@ -22,7 +22,12 @@ $_ENV['baseUrl'] = 'http://url.com';					//站点地址
 $_ENV['subUrl'] = $_ENV['baseUrl'] . '/link/';	//订阅地址，如需和站点名称相同，请不要修改
 $_ENV['muKey'] = 'default_mu_key';								//用于校验魔改后端请求，可以随意修改，但请保持前后端一致，否则节点不能工作！
 $_ENV['db_driver'] = 'mysql';							//数据库程序
-$_ENV['db_host'] = 'localhost';						//数据库地址
+// 数据库网络地址(在本机上推荐用 Unix Socket, 与下面二选一, 不用则留空)
+// 例: localhost(可解析主机名), 127.0.0.1(IP 地址)
+$_ENV['db_host'] = '';
+// 数据库 Unix Socket 地址(优先级高于网络地址, 与上面二选一, 不用则留空)
+// 例: /var/run/mysqld/mysqld.sock(绝对地址)
+$_ENV['db_socket'] = '';
 $_ENV['db_database'] = 'sspanel';						//数据库名
 $_ENV['db_username'] = 'root';							//数据库用户名
 $_ENV['db_password'] = 'sspanel';						//用户名对应的密码
@@ -38,17 +43,19 @@ $_ENV['mailgun_domain'] = '';
 $_ENV['mailgun_sender'] = '';
 
 # smtp
-$_ENV['smtp_host'] = '';
-$_ENV['smtp_username'] = '';
-$_ENV['smtp_port'] = 465;
-$_ENV['smtp_name'] = '';
-$_ENV['smtp_sender'] = '';
-$_ENV['smtp_passsword'] = '';
-$_ENV['smtp_ssl'] = true;
+$_ENV['smtp_host'] = '';                                // smtp 邮局服务器域
+$_ENV['smtp_username'] = '';                            // smtp 账户名
+$_ENV['smtp_port'] = 465;                               // smtp 端口(常见端口 25, 587 465)
+$_ENV['smtp_sender'] = '';                              // smtp 账户自定义显示名
+$_ENV['smtp_passsword'] = '';                           // stmp 账户密码
+$_ENV['smtp_ssl'] = true;                               // 支持 TLS/SSL 发信
+$_ENV['smtp_reply_to'] = $_ENV['smtp_username'];        // 当用户回复通知邮件时回复改地址
+$_ENV['smtp_reply_to_name'] = $_ENV['smtp_sender'];     // 回复地址显示名
 
 # sendgrid
 $_ENV['sendgrid_key'] = '';
-$_ENV['sendgrid_sender'] = '';
+$_ENV['sendgrid_sender'] = '';     //发件邮箱
+$_ENV['sendgrid_name'] = '';       //发件人名称
 
 
 //备份设置--------------------------------------------------------------------------------------------
@@ -206,7 +213,8 @@ $_ENV['zfbjk_pid'] = '';
 $_ENV['zfbjk_key'] = '';
 $_ENV['zfbjk_qrcodeurl'] = '';
 
-# BitPay 数字货币支付（比特币、以太坊、EOS等） 商户后台获取授权码 https://merchants.mugglepay.com/
+# BitPay 数字货币支付（USDT、比特币、以太坊、EOS等） 商户后台获取授权码 https://merchants.mugglepay.com/
+#   注册即可使用USDT收款，无需任何费用
 #   客服和技术 24x7 在线支持： https://t.me/joinchat/GLKSKhUnE4GvEAPgqtChAQ
 $_ENV['bitpay_secret'] = '';
 
@@ -303,7 +311,7 @@ $_ENV['redis_database'] = '';
 $_ENV['redis_password']= '';
 
 #Radius设置
-$_ENV['enable_radius'] = true;			//是否开启Radius
+$_ENV['enable_radius'] = false;			//是否开启Radius
 $_ENV['radius_db_host'] = '';				//以下4项为Radius数据库设置
 $_ENV['radius_db_database'] = '';
 $_ENV['radius_db_user'] = '';
@@ -324,9 +332,13 @@ $_ENV['enable_analytics_code'] = true;
 $_ENV['sspanelAnalysis'] = true;
 
 #在套了CDN之后获取用户真实ip，如果您不知道这是什么，请不要乱动
-if ( isset($_SERVER['HTTP_X_FORWARDED_FOR']) ) {
-$list = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-$_SERVER['REMOTE_ADDR'] = $list[0];
+$_ENV['cdn_forwarded_ip'] = array('HTTP_X_FORWARDED_FOR', 'HTTP_ALI_CDN_REAL_IP', 'X-Real-IP', 'True-Client-Ip');
+foreach($_ENV['cdn_forwarded_ip'] as $cdn_forwarded_ip) {
+    if(isset($_SERVER[$cdn_forwarded_ip])){
+        $list = explode(',', $_SERVER[$cdn_forwarded_ip]);
+        $_SERVER['REMOTE_ADDR'] = $list[0];
+        break;
+    }
 }
 
 
