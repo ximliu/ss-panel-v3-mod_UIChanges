@@ -8,7 +8,7 @@ class Boot
 {
     public static function setTime()
     {
-        date_default_timezone_set(Config::get('timeZone'));
+        date_default_timezone_set($_ENV['timeZone']);
         View::$beginTime = microtime(true);
     }
 
@@ -22,6 +22,8 @@ class Boot
         } catch (\Exception $e) {
             die('Could not connect to main database: ' . $e->getMessage());
         }
+
+        $capsule->setAsGlobal();
 
         if ($_ENV['enable_radius'] === true) {
             try {
