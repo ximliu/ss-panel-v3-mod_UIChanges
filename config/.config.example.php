@@ -7,7 +7,7 @@
 //【新增/删除】config无需写入迁移附注
 $_ENV['config_migrate_notice'] =
 'enable_geetest_* 已变更为 enable_*_captcha
-crisp已被替换为mylivechat
+又加回crisp，newIndex为true的暂时别更，没加完。溜了我要上班了
 telegrma_qrcode被重命名为qrcode
 ';
 $_ENV['version'] = 2;    //仅当涉及【需要修改config以外的文件】时才需要+1，站长勿动
@@ -32,8 +32,8 @@ $_ENV['db_database']  = 'sspanel';           //数据库名
 $_ENV['db_username']  = 'root';              //数据库用户名
 $_ENV['db_password']  = 'sspanel';           //用户名对应的密码
 #高级
-$_ENV['db_charset']   = 'utf8';
-$_ENV['db_collation'] = 'utf8_general_ci';
+$_ENV['db_charset']   = 'utf8mb4';
+$_ENV['db_collation'] = 'utf8mb4_unicode_ci';
 $_ENV['db_prefix']    = '';
 
 
@@ -241,9 +241,10 @@ $_ENV['telegram_general_terms']             = '服务条款.';                  
 
 
 //沟通设置--------------------------------------------------------------------------------------------
-#客服系统设置，注册地址 https://www.mylivechat.com
-$_ENV['enable_mylivechat']    = false;   //是否开启客服系统
-$_ENV['mylivechat_id']        = '';      //客服系统ID
+$_ENV['live_chat']            = 'none';   //是否开启客服系统 none  crisp  mylivechat
+$_ENV['mylivechat_id']        = '';      //客服系统ID，注册地址 https://www.mylivechat.com
+$_ENV['crisp_id']             = '';      //客服系统ID，注册地址 https://crisp.chat/en/
+$_ENV['tawk_id']              = '';      //客服系统ID，注册地址 https://tawk.to/
 
 # PushBear  基于微信模板的向关注了二维码的用户以微信方式推送消息 https://pushbear.ftqq.com/，目前仅用户推送新公告
 $_ENV['usePushBear']          = false;
@@ -279,7 +280,7 @@ $_ENV['enable_checkin_captcha'] = false;        //启用签到验证码
 
 
 //支付系统设置----------------------------------------------------------------------------------------
-#取值 none | codepay | f2fpay | chenAlipay | paymentwall | spay |tomatopay | payjs | yftpay
+#取值 none | codepay | f2fpay | chenAlipay | paymentwall | spay | payjs | yftpay
 $_ENV['payment_system']       = 'none';
 
 #yft支付设置
@@ -322,21 +323,6 @@ $_ENV['bitpay_secret']        = '';
 #PayJs
 $_ENV['payjs_mchid']          = '';
 $_ENV['payjs_key']            = '';
-
-#tomatopay番茄云支付
-#使用教程:https://swapidc.fanqieui.com/?t/329.html  tg群 https://t.me/fanqiepay
-$_ENV['tomatopay'] = [
-    'wxpay'  => [
-        'mchid'               => '',    // 商户号
-        'account'             => '',    //您在番茄云支付的登录邮箱
-        'token'               => ''     // 安全验证码
-    ],
-    'alipay' => [
-        'mchid'               => '',    // 商户号
-        'account'             => '',    //您在番茄云支付的登录邮箱
-        'token'               => ''     // 安全验证码
-    ],
-];
 
 
 //其他面板显示设置------------------------------------------------------------------------------------------
@@ -441,7 +427,7 @@ $_ENV['userCenterClient']     = [
 
 
 //新旧首页设置--------------------------------------------------------------------------------------------
-$_ENV['newIndex'] = true;	//使用新的 Node.js 开发的首页请填写 true，其他值为使用先前的首页，如您使用其他主题请保持 true
+$_ENV['newIndex'] = false;	//使用新的 Node.js 开发的首页请填写 true，其他值为使用先前的首页，如您使用其他主题请保持 true
 
 
 //节点检测-----------------------------------------------------------------------------------------------
@@ -538,3 +524,6 @@ foreach ($_ENV['cdn_forwarded_ip'] as $cdn_forwarded_ip) {
         break;
     }
 }
+
+// https://sentry.io for production debugging
+$_ENV['sentry_dsn'] = '';

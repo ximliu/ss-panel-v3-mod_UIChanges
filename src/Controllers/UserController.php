@@ -803,7 +803,7 @@ class UserController extends BaseController
             $shop_item = Shop::where('id',$order['shopid'])->first();
             $shop_item = json_decode($shop_item['content']);
             $shop_item->datetime = $order['datetime'];
-            if (array_key_exists('reset',$shop_item) || array_key_exists('reset_value',$shop_item) || array_key_exists('reset_exp',$shop_item))
+            if (property_exists($shop_item,'reset') || property_exists($shop_item,'reset_value') || property_exists($shop_item,'reset_exp'))
             {
                 if (time() < ($shop_item->datetime + $shop_item->reset_exp * 86400) ) {
                     $res['ret'] = 0;
@@ -1307,6 +1307,7 @@ class UserController extends BaseController
             return $this->echoJson($response, $res);
         }
 
+        $logs->setPath('/user/detect');
         return $this->view()->assign('rules', $logs)->display('user/detect_index.tpl');
     }
 
@@ -1329,6 +1330,7 @@ class UserController extends BaseController
             return $this->echoJson($response, $res);
         }
 
+        $logs->setPath('/user/detect/log');
         return $this->view()->assign('logs', $logs)->display('user/detect_log.tpl');
     }
 
@@ -1410,9 +1412,6 @@ class UserController extends BaseController
             case 'ssr':
                 $return .= URL::get_NewAllUrl($user, ['type' => 'ssr']) . PHP_EOL;
                 break;
-            case 'ssd':
-                $return .= LinkController::getSSD($user, 1, [], ['type' => 'ss']) . PHP_EOL;
-                break;
             case 'v2ray':
                 $return .= URL::get_NewAllUrl($user, ['type' => 'vmess']) . PHP_EOL;
                 break;
@@ -1479,10 +1478,6 @@ class UserController extends BaseController
             case 'ss-win':
                 $user_config_file_name = 'gui-config.json';
                 $content = ClientProfiles::getSSPcConf($this->user);
-                break;
-            case 'ssd-win':
-                $user_config_file_name = 'gui-config.json';
-                $content = ClientProfiles::getSSDPcConf($this->user);
                 break;
             case 'ssr-win':
                 $user_config_file_name = 'gui-config.json';

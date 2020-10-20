@@ -558,11 +558,12 @@ class Job extends Command
                         $under_limit = true;
                         $unit_text = '%';
                     }
-                } elseif ($_ENV['notify_limit_mode'] == 'mb' &&
-                    Tools::flowToMB($user_traffic_left) < $_ENV['notify_limit_value']
-                ) {
-                    $under_limit = true;
-                    $unit_text = 'MB';
+                    elseif ($_ENV['notify_limit_mode'] == 'mb' &&
+                        Tools::flowToMB($user_traffic_left) < $_ENV['notify_limit_value']
+                    ) {
+                        $under_limit = true;
+                        $unit_text = 'MB';
+                    }
                 }
 
                 if ($under_limit == true && $user->traffic_notified == false) {
@@ -748,7 +749,7 @@ class Job extends Command
     public function updatedownload()
     {
         system(
-            'cd ' . BASE_PATH . '/public/ssr-download/ && git pull https://github.com/xcxnig/ssr-download.git && git gc'
+            'cd ' . BASE_PATH . '/public/ssr-download/ && git pull https://github.com/xcxnig/ssr-download.git --rebase && git gc'
         );
     }
 
