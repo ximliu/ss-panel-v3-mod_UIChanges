@@ -31,6 +31,7 @@ use App\Models\{
     DetectRule,
     TrafficLog,
     InviteCode,
+    EmailVerify,
     UserSubscribeLog
 };
 use App\Utils\{
@@ -38,6 +39,7 @@ use App\Utils\{
     Pay,
     URL,
     Hash,
+    Check,
     QQWry,
     Tools,
     Radius,
@@ -50,6 +52,7 @@ use App\Utils\{
 };
 use voku\helper\AntiXSS;
 use Exception;
+use Ramsey\Uuid\Uuid;
 
 /**
  *  HomeController
@@ -58,7 +61,7 @@ class UserController extends BaseController
 {
     public function index($request, $response, $args)
     {
-        $ssr_sub_token = LinkController::GenerateSSRSubCode($this->user->id, 0);
+        $ssr_sub_token = LinkController::GenerateSSRSubCode($this->user->id);
 
         $GtSdk = null;
         $recaptcha_sitekey = null;
@@ -635,6 +638,68 @@ class UserController extends BaseController
         return $this->echoJson($response, $res);
     }
 
+    public function updateEmail($request, $response, $args)
+    {
+        $user = $this->user;
+        $newemail = $request->getParam('newemail');
+        $oldemail = $user->email;
+        $otheruser = User::where('email', $newemail)->first();
+        if ($_ENV['enable_telegram'] !== true) {
+            $res['ret'] = 0;
+            $res['msg'] = '未啓用用戶自行修改郵箱功能';
+            return $response->getBody()->write(json_encode($res));
+        }
+        if (Config::getconfig('Register.bool.Enable_email_verify')) {
+            $emailcode = $request->getParam('emailcode');
+            $mailcount = EmailVerify::where('email', '=', $newemail)->where('code', '=', $emailcode)->where('expire_in', '>', time())->first();
+            if ($mailcount == null) {
+                $res['ret'] = 0;
+                $res['msg'] = '您的邮箱验证码不正确';
+                return $response->getBody()->write(json_encode($res));
+            }
+        }
+        if ($newemail == '') {
+            $res['ret'] = 0;
+            $res['msg'] = '未填写邮箱';
+            return $response->getBody()->write(json_encode($res));
+        }
+        if (!Check::isEmailLegal($newemail)) {
+            $res['ret'] = 0;
+            $res['msg'] = '邮箱无效';
+            return $response->getBody()->write(json_encode($res));
+        }
+        if ($otheruser != null) {
+            $res['ret'] = 0;
+            $res['msg'] = '邮箱已经被使用了';
+            return $response->getBody()->write(json_encode($res));
+        }
+        if ($newemail == $oldemail) {
+            $res['ret'] = 0;
+            $res['msg'] = '新邮箱不能和旧邮箱一样';
+            return $response->getBody()->write(json_encode($res));
+        }
+        $antiXss = new AntiXSS();
+        $user->email = $antiXss->xss_clean($newemail);
+        $user->save();
+
+        $res['ret'] = 1;
+        $res['msg'] = '修改成功';
+        return $this->echoJson($response, $res);
+    }
+
+    public function updateUsername($request, $response, $args)
+    {
+        $newusername = $request->getParam('newusername');
+        $user = $this->user;
+        $antiXss = new AntiXSS();
+        $user->user_name = $antiXss->xss_clean($newusername);
+        $user->save();
+
+        $res['ret'] = 1;
+        $res['msg'] = '修改成功';
+        return $this->echoJson($response, $res);
+    }
+
     public function updateHide($request, $response, $args)
     {
         $hide = $request->getParam('hide');
@@ -1117,21 +1182,29 @@ class UserController extends BaseController
     public function updateSsPwd($request, $response, $args)
     {
         $user = Auth::getUser();
-        $pwd = $request->getParam('sspwd');
-        $pwd = trim($pwd);
+        $pwd = Tools::genRandomChar(6);
+        $current_timestamp = time();
+        $new_uuid = Uuid::uuid3(Uuid::NAMESPACE_DNS, $user->email . '|' . $current_timestamp);
+        $otheruuid = User::where('uuid', $new_uuid)->first();
 
         if ($pwd == '') {
             $res['ret'] = 0;
             $res['msg'] = '密码不能为空';
             return $response->getBody()->write(json_encode($res));
         }
-
         if (!Tools::is_validate($pwd)) {
             $res['ret'] = 0;
             $res['msg'] = '密码无效';
             return $response->getBody()->write(json_encode($res));
         }
+        if ($otheruuid != null) {
+            $res['ret'] = 0;
+            $res['msg'] = '目前出现一些问题，请稍后再试';
+            return $response->getBody()->write(json_encode($res));
+        }
 
+        $user->uuid = $new_uuid;
+        $user->save();
         $user->updateSsPwd($pwd);
         $res['ret'] = 1;
 
@@ -1468,7 +1541,7 @@ class UserController extends BaseController
     public function getPcClient($request, $response, $args)
     {
         $zipArc = new \ZipArchive();
-        $user_token = LinkController::GenerateSSRSubCode($this->user->id, 0);
+        $user_token = LinkController::GenerateSSRSubCode($this->user->id);
         $type = trim($request->getQueryParams()['type']);
         // 临时文件存放路径
         $temp_file_path = BASE_PATH . '/storage/';
