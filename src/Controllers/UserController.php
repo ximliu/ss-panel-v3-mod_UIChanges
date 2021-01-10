@@ -126,7 +126,13 @@ class UserController extends BaseController
         $pageNum = $request->getQueryParams()['page'] ?? 1;
         $codes = Code::where('type', '<>', '-2')->where('userid', '=', $this->user->id)->orderBy('id', 'desc')->paginate(15, ['*'], 'page', $pageNum);
         $codes->setPath('/user/code');
-        return $this->view()->assign('codes', $codes)->assign('pmw', Payment::purchaseHTML())->assign('bitpay', BitPayment::purchaseHTML())->display('user/code.tpl');
+        $render = Tools::paginate_render($codes);
+        return $this->view()
+            ->assign('codes', $codes)
+            ->assign('pmw', Payment::purchaseHTML())
+            ->assign('bitpay', BitPayment::purchaseHTML())
+            ->assign('render', $render)
+            ->display('user/code.tpl');
     }
 
     public function orderDelete($request, $response, $args)
@@ -148,7 +154,13 @@ class UserController extends BaseController
             }
         )->where('isused', 1)->orderBy('id', 'desc')->paginate(15, ['*'], 'page', $pageNum);
         $codes->setPath('/user/donate');
-        return $this->view()->assign('codes', $codes)->assign('total_in', Code::where('isused', 1)->where('type', -1)->sum('number'))->assign('total_out', Code::where('isused', 1)->where('type', -2)->sum('number'))->display('user/donate.tpl');
+        $render = Tools::paginate_render($codes);
+        return $this->view()
+            ->assign('codes', $codes)
+            ->assign('total_in', Code::where('isused', 1)->where('type', -1)->sum('number'))
+            ->assign('total_out', Code::where('isused', 1)->where('type', -2)->sum('number'))
+            ->assign('render', $render)
+            ->display('user/donate.tpl');
     }
 
     public function isHTTPS()
@@ -521,8 +533,13 @@ class UserController extends BaseController
             $paybacks_sum = 0;
         }
         $paybacks->setPath('/user/invite');
-
-        return $this->view()->assign('code', $code)->assign('paybacks', $paybacks)->assign('paybacks_sum', $paybacks_sum)->display('user/invite.tpl');
+        $render = Tools::paginate_render($paybacks);
+        return $this->view()
+            ->assign('code', $code)
+            ->assign('paybacks', $paybacks)
+            ->assign('paybacks_sum', $paybacks_sum)
+            ->assign('render', $render)
+            ->display('user/invite.tpl');
     }
 
     public function buyInvite($request, $response, $args)
@@ -799,7 +816,7 @@ class UserController extends BaseController
         return $response->getBody()->write(json_encode($res));
     }
 
-    public function buy_traffic_package ($request, $response, $args)
+    public function buy_traffic_package($request, $response, $args)
     {
         $user = $this->user;
         $shop = $request->getParam('shop');
@@ -812,9 +829,7 @@ class UserController extends BaseController
             return $response->getBody()->write(json_encode($res));
         }
 
-        $content = json_decode($shop->content);
-
-        if ($user->class < $content->traffic_package->class->min || $user->class > $content->traffic_package->class->max) {
+        if ($user->class < $shop->content['traffic_package']['class']['min'] || $user->class > $shop->content['traffic_package']['class']['max']) {
             $res['ret'] = 0;
             $res['msg'] = '您当前的会员等级无法购买此流量包';
             return $response->getBody()->write(json_encode($res));
@@ -863,14 +878,9 @@ class UserController extends BaseController
         $shop = Shop::where('id', $shop)->where('status', 1)->first();
 
         $orders = Bought::where('userid', $this->user->id)->get();
-        foreach ($orders as $order)
-        {
-            $shop_item = Shop::where('id',$order['shopid'])->first();
-            $shop_item = json_decode($shop_item['content']);
-            $shop_item->datetime = $order['datetime'];
-            if (property_exists($shop_item,'reset') || property_exists($shop_item,'reset_value') || property_exists($shop_item,'reset_exp'))
-            {
-                if (time() < ($shop_item->datetime + $shop_item->reset_exp * 86400) ) {
+        foreach ($orders as $order) {
+            if ($order->shop()->use_loop()) {
+                if ($order->valid()) {
                     $res['ret'] = 0;
                     $res['msg'] = '您购买的含有自动重置系统的套餐还未过期，无法购买新套餐';
                     return $response->getBody()->write(json_encode($res));
@@ -989,7 +999,11 @@ class UserController extends BaseController
             $res['shops'] = $shops;
             return $response->getBody()->write(json_encode($res));
         };
-        return $this->view()->assign('shops', $shops)->display('user/bought.tpl');
+        $render = Tools::paginate_render($shops);
+        return $this->view()
+            ->assign('shops', $shops)
+            ->assign('render', $render)
+            ->display('user/bought.tpl');
     }
 
     public function deleteBoughtGet($request, $response, $args)
@@ -1381,7 +1395,11 @@ class UserController extends BaseController
         }
 
         $logs->setPath('/user/detect');
-        return $this->view()->assign('rules', $logs)->display('user/detect_index.tpl');
+        $render = Tools::paginate_render($logs);
+        return $this->view()
+            ->assign('rules', $logs)
+            ->assign('render', $render)
+            ->display('user/detect_index.tpl');
     }
 
     public function detect_log($request, $response, $args)
@@ -1404,7 +1422,11 @@ class UserController extends BaseController
         }
 
         $logs->setPath('/user/detect/log');
-        return $this->view()->assign('logs', $logs)->display('user/detect_log.tpl');
+        $render = Tools::paginate_render($logs);
+        return $this->view()
+            ->assign('logs', $logs)
+            ->assign('render', $render)
+            ->display('user/detect_log.tpl');
     }
 
     public function disable($request, $response, $args)
@@ -1527,8 +1549,12 @@ class UserController extends BaseController
             $res['subscribeLog_keep_days'] = $_ENV['subscribeLog_keep_days'];
             return $this->echoJson($response, $res);
         }
-
-        return $this->view()->assign('logs', $logs)->assign('iplocation', $iplocation)->fetch('user/subscribe_log.tpl');
+        $render = Tools::paginate_render($logs);
+        return $this->view()
+            ->assign('logs', $logs)
+            ->assign('iplocation', $iplocation)
+            ->assign('render', $render)
+            ->fetch('user/subscribe_log.tpl');
     }
 
     /**
