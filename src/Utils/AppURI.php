@@ -57,12 +57,12 @@ class AppURI
         switch ($item['type']) {
             case 'vmess':
                 $node = [
-                    'v'     => 2,
+                    'v'     => "2",
                     'ps'    => $item['remark'],
                     'add'   => $item['add'],
-                    'port'  => $item['port'],
+                    'port'  => (string)$item['port'],
                     'id'    => $item['id'],
-                    'aid'   => $item['aid'],
+                    'aid'   => (string)$item['aid'],
                     'net'   => $item['net'],
                     'type'  => $item['headerType'],
                     'host'  => $item['host'],
@@ -178,7 +178,6 @@ class AppURI
                     case 'simple_obfs_tls':
                         $return .= ', obfs=tls';
                         $return .= ($item['obfs_param'] != '' ? ', obfs-host=' . $item['obfs_param'] : ', obfs-host=wns.windows.com');
-                        $return .= ', obfs-uri=/';
                         break;
                     case 'v2ray';
                         $return .= ($item['tls'] == 'tls' ? ', obfs=wss' : ', obfs=ws');
@@ -488,7 +487,6 @@ class AppURI
         $return = null;
         switch ($item['type']) {
             case 'ss':
-                # 666
                 $return['remarks']      = $item['remark'];
                 $return['server']       = $item['address'];
                 $return['server_port']  = $item['port'];
