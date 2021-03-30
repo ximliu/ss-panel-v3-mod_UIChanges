@@ -283,7 +283,7 @@ $_ENV['enable_checkin_captcha'] = false;        //启用签到验证码
 
 
 //支付系统设置----------------------------------------------------------------------------------------
-#取值 none | codepay | f2fpay | chenAlipay | paymentwall | spay | payjs | yftpay | bitpayx
+#取值 none | codepay | f2fpay | paymentwall | spay | payjs | yftpay | bitpayx
 $_ENV['payment_system']       = 'none';
 
 #yft支付设置
@@ -426,9 +426,6 @@ $_ENV['userCenterClient']     = [
         ]
     ]
 ];
-
-//新旧首页设置--------------------------------------------------------------------------------------------
-$_ENV['newIndex'] = false;	//使用新的 Node.js 开发的首页请填写 true，其他值为使用先前的首页，如您使用其他主题请保持 true
 
 //节点检测-----------------------------------------------------------------------------------------------
 #GFW检测，请通过crontab进行【开启/关闭】
