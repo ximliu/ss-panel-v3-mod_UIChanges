@@ -251,7 +251,7 @@ $_ENV['mylivechat_id']        = '';      //客服系统ID，注册地址 https:/
 $_ENV['crisp_id']             = '';      //客服系统ID，注册地址 https://crisp.chat/en/
 $_ENV['tawk_id']              = '';      //客服系统ID，注册地址 https://tawk.to/
 
-# PushBear  基于微信模板的向关注了二维码的用户以微信方式推送消息 https://pushbear.ftqq.com/，目前仅用户推送新公告
+# PushBear 基于微信模板的向关注了二维码的用户以微信方式推送消息 https://pushbear.ftqq.com/，目前仅用户推送新公告
 $_ENV['usePushBear']          = false;
 $_ENV['PushBear_sendkey']     = '';       //请填写您在PushBear获取的sendkey，请仔细检查勿粘贴错
 
@@ -259,7 +259,7 @@ $_ENV['PushBear_sendkey']     = '';       //请填写您在PushBear获取的send
 $_ENV['enable_ticket']        = true;        //是否开启工单系统
 $_ENV['mail_ticket']          = true;        //是否开启工单邮件提醒
 
-# Server酱  用户提交新工单或者回复工单时用微信提醒机场主 http://sc.ftqq.com/
+# Server酱 用户提交新工单或者回复工单时用微信提醒机场主 https://sct.ftqq.com/
 $_ENV['useScFtqq']            = false;        //是否开启工单Server酱提醒
 $_ENV['ScFtqq_SCKEY']         = '';           //请填写您在Server酱获取的SCKEY  请仔细检查勿粘贴错
 
@@ -471,9 +471,6 @@ $_ENV['timeZone']               = 'PRC';                 //PRC 天朝时间  UTC
 $_ENV['theme']                  = 'material';            //默认主题
 $_ENV['jump_delay']             = 1200;                  //跳转延时，单位ms，不建议太长
 
-$_ENV['pacp_offset']            = -20000;              //VPN 端口偏移
-$_ENV['pacpp_offset']           = -20000;
-
 $_ENV['checkNodeIp']            = true;                 //是否webapi验证节点ip
 $_ENV['muKeyList']              = [];                   //多 key 列表
 $_ENV['keep_connect']           = false;               // 流量耗尽用户限速至 1Mbps
@@ -489,14 +486,6 @@ $_ENV['redis_host']             = '127.0.0.1';
 $_ENV['redis_port']             = 6379;
 $_ENV['redis_database']         = '';
 $_ENV['redis_password']         = '';
-
-#Radius设置
-$_ENV['enable_radius']          = false;            //是否开启Radius
-$_ENV['radius_db_host']         = '';               //以下4项为Radius数据库设置
-$_ENV['radius_db_database']     = '';
-$_ENV['radius_db_user']         = '';
-$_ENV['radius_db_password']     = '';
-$_ENV['radius_secret']          = '';               //Radius连接密钥
 
 #Cloudflare
 $_ENV['cloudflare_enable']      = false;         //是否开启 Cloudflare 解析
